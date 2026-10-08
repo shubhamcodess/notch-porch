@@ -6,7 +6,7 @@ A macOS menu-bar app (Electron) that lives in the MacBook notch as a widget dock
 ## Run / build
 ```bash
 npm install
-npm start        # menu-bar icon "◐", no Dock icon
+npm start        # menu-bar pill icon, no Dock icon
 npm run dist     # dist/Notch-Porch-arm64.dmg + .zip (ad-hoc signed by scripts/adhoc-sign.js)
 ```
 Release: bump `version` in package.json, `git tag vX.Y.Z && git push --tags` — `.github/workflows/release.yml` builds on macos-14 and publishes the assets. Asset names are versionless on purpose (`releases/latest/download/…` URLs and scripts/install.sh depend on them).

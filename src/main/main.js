@@ -111,8 +111,9 @@ function createShell() {
 function buildTray(widgets) {
   const icon = (n) => nativeImage.createFromPath(path.join(ROOT, 'assets', `leaf-${n}.png`));
   const leaves = { green: icon('green'), yellow: icon('yellow') };
-  tray = new Tray(nativeImage.createEmpty());
-  tray.setTitle('◐');
+  const trayIcon = nativeImage.createFromPath(path.join(ROOT, 'assets', 'trayTemplate.png'));
+  trayIcon.setTemplateImage(true); // macOS tints it for light/dark menu bars
+  tray = new Tray(trayIcon);
   const rebuild = () => {
     const login = app.getLoginItemSettings().openAtLogin;
     tray.setToolTip(`Notch Porch — ${resourceLabel}`);

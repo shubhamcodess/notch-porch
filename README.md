@@ -66,8 +66,8 @@ Needs Node 20+.
 
 ## First run
 
-1. A **◐** icon appears in the menu bar, and a small pill sits beside the notch. There's no Dock icon.
-2. Hover the notch to open the card, then click **Click to open YouTube Music**. (Or use **◐ → Open YouTube Music window**.)
+1. A small pill-and-bars icon appears in the menu bar, and a small pill sits beside the notch. There's no Dock icon.
+2. Hover the notch to open the card, then click **Click to open YouTube Music**. (Or use **Menu-bar icon → Open YouTube Music window**.)
 3. Sign in to your Google account and play anything. Close the window; it just hides.
 4. Your login is remembered. From now on the notch shows what's playing.
 
@@ -76,8 +76,8 @@ Needs Node 20+.
 Google sometimes says "this browser may not be secure". Import your cookies instead:
 
 1. Export your `youtube.com` / `google.com` cookies as JSON (the Cookie-Editor extension's export works).
-2. **◐ → Show data folder**, and save the file there as `cookies.json`.
-3. **◐ → Re-import cookies.json**.
+2. **Menu-bar icon → Show data folder**, and save the file there as `cookies.json`.
+3. **Menu-bar icon → Re-import cookies.json**.
 
 `cookies.json` stays on your Mac and is git-ignored. Treat it like a password.
 
@@ -89,7 +89,7 @@ Google sometimes says "this browser may not be secure". Import your cookies inst
 | Move the cursor away | Fold it back |
 | Click the magnifier (or double-click the title) | Search for a song. Enter plays the first result, Esc goes back |
 | Two-finger swipe sideways | Switch widgets (when you have more than one) |
-| **◐** in the menu bar | Theme, Launch at login, resource status, YouTube Music window, Reload, Quit |
+| Menu-bar icon | Theme, Launch at login, resource status, YouTube Music window, Reload, Quit |
 
 Settings live in `~/Library/Application Support/notch-porch/settings.json`:
 
@@ -130,7 +130,7 @@ scripts/         install.sh, ad-hoc signing hook
 
 ## Uninstall
 
-Quit from **◐ → Quit Notch Porch**, delete the app from Applications, and optionally remove your data:
+Quit from **Menu-bar icon → Quit Notch Porch**, delete the app from Applications, and optionally remove your data:
 
 ```bash
 rm -rf ~/Library/Application\ Support/notch-porch

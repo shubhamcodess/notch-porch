@@ -31,4 +31,4 @@ xattr -cr "/Applications/$APP" 2>/dev/null || true
 
 echo "Done. Launching…"
 open "/Applications/$APP"
-echo "Look for the ◐ icon in your menu bar, then hover the notch."
+echo "Look for the pill icon in your menu bar, then hover the notch."
