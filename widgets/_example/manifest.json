@@ -1,0 +1,5 @@
+{
+  "name": "Example",
+  "order": 99,
+  "renderer": "widget.js"
+}

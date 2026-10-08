@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>Notch Porch</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="pill" class="pill collapsed">
+    <div class="skin"><div class="sheen"></div><div class="rim"></div></div>
+    <div class="notch-cutout"></div>
+
+    <!-- collapsed: the active widget fills these two slots beside the notch -->
+    <div class="compact">
+      <div class="slot left"></div>
+      <div class="slot right"></div>
+    </div>
+
+    <!-- expanded: one page per widget -->
+    <div class="expanded">
+      <div class="pages"></div>
+      <nav class="dots" aria-label="Widgets"></nav>
+    </div>
+  </div>
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>

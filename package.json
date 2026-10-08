@@ -1,0 +1,70 @@
+{
+  "name": "notch-porch",
+  "productName": "Notch Porch",
+  "version": "1.0.0",
+  "description": "A widget dock that lives in the MacBook notch. First widget: a YouTube Music player.",
+  "author": "Shubham Prakash",
+  "license": "MIT",
+  "homepage": "https://github.com/shubhamcodess/notch-porch",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shubhamcodess/notch-porch.git"
+  },
+  "main": "src/main/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac --arm64 --publish never"
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.0.0",
+    "cross-fetch": "^4.0.0"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.shubhamcodess.notchporch",
+    "productName": "Notch Porch",
+    "artifactName": "Notch-Porch-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**",
+      "widgets/**",
+      "assets/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "dmg": {
+      "title": "Notch Porch"
+    },
+    "afterPack": "scripts/adhoc-sign.js"
+  }
+}
