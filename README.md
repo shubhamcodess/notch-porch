@@ -7,9 +7,7 @@
 **A widget dock that lives in your MacBook's notch.**
 Hover the notch and a card drops down. Move away and it folds back. Starring: a YouTube Music player with ad blocking.
 
-<!-- TODO: add docs/demo.gif, then uncomment:
 ![Notch Porch demo](docs/demo.gif)
--->
 
 </div>
 
