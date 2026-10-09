@@ -4,6 +4,7 @@
 
 const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, powerMonitor } = require('electron');
 const path = require('path');
+const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -22,12 +23,17 @@ let tray = null;
 let quitting = false;
 let holdFocus = false;
 const quitHooks = [];
+let menuProc = null;
+let menuTrusted = true;   // false while the helper reports missing Accessibility access
+let lastMenuRight = null;
+let lastStatusLeft = null;
+let rebuildTray = () => {};
 let resourceLabel = 'Normal';
 let resourceHeavy = false;
 
 // ---------- settings (persisted in ~/Library/Application Support/notch-porch) ----------
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, lastWidget: null };
+const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, menuAvoid: true, menuAvoidAsked: false, lastWidget: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) }; } catch { /* first run */ }
@@ -71,6 +77,15 @@ async function setupWidgetMains(widgets) {
 }
 
 // ---------- notch geometry ----------
+// Exact hardware notch size (points) from the native helper; null on Macs without a notch or without the helper.
+let detectedNotch = null;
+function detectNotch() {
+  try {
+    const j = JSON.parse(execFileSync(menuBin(), ['--notch'], { timeout: 2000 }).toString());
+    detectedNotch = j.notchWidth > 0 ? { w: j.notchWidth, h: j.notchHeight } : null;
+  } catch { detectedNotch = null; }
+}
+
 function geometry() {
   const d = screen.getPrimaryDisplay();
   const menuBar = d.workArea.y - d.bounds.y;          // ~37–38px on notched Macs, ~24–25 otherwise
@@ -79,7 +94,7 @@ function geometry() {
     display: d,
     x: d.bounds.x + Math.round((d.bounds.width - WIN_W) / 2),
     y: d.bounds.y,
-    notch: { hasNotch, width: hasNotch ? settings.notchWidth : 0, height: hasNotch ? menuBar : 0, menuBar }
+    notch: { hasNotch, width: hasNotch ? (detectedNotch?.w ?? settings.notchWidth) : 0, height: hasNotch ? (detectedNotch?.h ?? menuBar) : 0, menuBar }
   };
 }
 
@@ -101,7 +116,7 @@ function createShell() {
   shell.on('closed', () => { shell = null; });
   shell.webContents.on('render-process-gone', (_e, d) => console.error('[shell] renderer gone:', d.reason));
 
-  const reposition = () => { if (!shell || shell.isDestroyed()) return; const n = geometry(); shell.setPosition(n.x, n.y); shell.webContents.send('shell:geometry', n.notch); };
+  const reposition = () => { if (!shell || shell.isDestroyed()) return; detectNotch(); const n = geometry(); shell.setPosition(n.x, n.y); shell.webContents.send('shell:geometry', n.notch); sendMenubar(); };
   screen.on('display-metrics-changed', reposition);
   screen.on('display-added', reposition);
   screen.on('display-removed', reposition);
@@ -133,12 +148,26 @@ function buildTray(widgets) {
           click: () => { settings.sleepMinutes = m; saveSettings(); shell?.webContents.send('shell:settings', settings); }
         }))
       },
+      {
+        label: 'Make room for app menus', type: 'checkbox', checked: settings.menuAvoid !== false,
+        click: (item) => {
+          settings.menuAvoid = item.checked; saveSettings();
+          shell?.webContents.send('shell:settings', settings);
+          if (item.checked) startMenuWatch(true); else { stopMenuWatch(); sendMenubar(null); }
+          rebuild();
+        }
+      },
+      ...(settings.menuAvoid !== false && !menuTrusted ? [{
+        label: 'Allow Accessibility access to enable this…',
+        click: () => { startMenuWatch(true); require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); }
+      }] : []),
       { label: 'Launch at login', type: 'checkbox', checked: login, click: () => { app.setLoginItemSettings({ openAtLogin: !login }); rebuild(); } },
       { type: 'separator' },
       { label: 'Reload dock', click: () => { if (!shell || shell.isDestroyed()) createShell(); else shell.reload(); } },
       { label: 'Quit Notch Porch', click: () => app.quit() }
     ]));
   };
+  rebuildTray = rebuild;
   rebuild();
   startResourceMonitor(rebuild);
 }
@@ -165,6 +194,46 @@ function startResourceMonitor(rebuild) {
   setInterval(tick, 5000);
 }
 
+// ---------- app-menu collision (native helper reads the frontmost app's menu extent) ----------
+const menuBin = () => (app.isPackaged ? path.join(process.resourcesPath, 'menubar-watch') : path.join(ROOT, 'build', 'menubar-watch'));
+
+function sendMenubar(right, status) {
+  if (right !== undefined) lastMenuRight = right;
+  if (status !== undefined) lastStatusLeft = status;
+  if (!shell || shell.isDestroyed()) return;
+  const g = geometry();
+  if (!g.notch.hasNotch) return void shell.webContents.send('shell:menubar', { gap: null, gapR: null });
+  const cx = g.display.bounds.x + g.display.bounds.width / 2, half = g.notch.width / 2;
+  shell.webContents.send('shell:menubar', {
+    gap: lastMenuRight == null ? null : cx - half - lastMenuRight,     // free px between app menus and the notch
+    gapR: lastStatusLeft == null ? null : lastStatusLeft - (cx + half)  // free px between the notch and the status icons
+  });
+}
+function stopMenuWatch() { if (menuProc) { menuProc.kill(); menuProc = null; } }
+function startMenuWatch(prompt = false) {
+  stopMenuWatch();
+  if (settings.menuAvoid === false || !fs.existsSync(menuBin())) return;
+  const proc = spawn(menuBin(), prompt ? ['--prompt'] : []);
+  menuProc = proc;
+  let buf = '';
+  proc.stdout.on('data', (d) => {
+    buf += d;
+    for (let i; (i = buf.indexOf('\n')) >= 0;) {
+      const line = buf.slice(0, i); buf = buf.slice(i + 1);
+      try {
+        const m = JSON.parse(line);
+        if ('statusLeft' in m) { sendMenubar(undefined, m.statusLeft); continue; }
+        const was = menuTrusted;
+        menuTrusted = !('trusted' in m);
+        sendMenubar(menuTrusted ? m.right : null);
+        if (was !== menuTrusted) rebuildTray();
+      } catch { /* ignore partial lines */ }
+    }
+  });
+  proc.on('error', () => { menuProc = null; });
+  proc.on('exit', () => { if (menuProc === proc) menuProc = null; });
+}
+
 // ---------- shell IPC ----------
 ipcMain.on('shell:interactive', (_e, on) => {
   if (!shell) return;
@@ -172,6 +241,8 @@ ipcMain.on('shell:interactive', (_e, on) => {
   if (!on && shell.isFocused() && !holdFocus) shell.blur();
 });
 ipcMain.handle('shell:hold', (_e, on) => { holdFocus = !!on; if (on && shell && !shell.isDestroyed()) { app.focus({ steal: true }); shell.focus(); } });
+// test hook: lets a debugger simulate an app whose menus reach `gap` px short of the notch
+ipcMain.handle('shell:menubar-debug', (_e, m) => { if (process.env.NOTCH_DEBUG && shell) shell.webContents.send('shell:menubar', m); });
 ipcMain.handle('shell:config', () => ({ widgets: listWidgets(), notch: geometry().notch, settings }));
 ipcMain.handle('shell:setSetting', (_e, key, value) => { settings[key] = value; saveSettings(); return settings; });
 
@@ -179,10 +250,16 @@ ipcMain.handle('shell:setSetting', (_e, key, value) => { settings[key] = value; 
 app.whenReady().then(async () => {
   if (process.platform === 'darwin') app.dock.hide();
   loadSettings();
+  detectNotch();
   const widgets = listWidgets();
   createShell();
   await setupWidgetMains(widgets);
   buildTray(widgets);
+  if (settings.menuAvoid !== false) {
+    const first = !settings.menuAvoidAsked;           // show the macOS permission dialog once
+    if (first) { settings.menuAvoidAsked = true; saveSettings(); }
+    startMenuWatch(first);
+  }
 });
-app.on('before-quit', () => { quitting = true; for (const fn of quitHooks) { try { fn(); } catch { /* ignore */ } } });
+app.on('before-quit', () => { quitting = true; stopMenuWatch(); for (const fn of quitHooks) { try { fn(); } catch { /* ignore */ } } });
 app.on('window-all-closed', (e) => e.preventDefault()); // stay alive as a menu-bar app

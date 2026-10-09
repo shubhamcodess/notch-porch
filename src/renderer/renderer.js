@@ -10,22 +10,48 @@ const rightSlot = pill.querySelector('.slot.right');
 
 const cfg = await window.notch.invoke('shell:config');
 let settings = cfg.settings;
+let hasNotch = false;
+let tuckL = false, tuckR = false;   // side items folded behind the notch to leave room for app menus / status icons
+let playingNow = false;
+let lastMenu = { gap: null, gapR: null };
+const sideW = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--side')) || 70;
+const decide = (cur, gap) => {
+  if (settings.menuAvoid === false || !hasNotch || gap == null) return false;
+  if (gap < sideW() + 8) return true;              // crowded: tuck the item away
+  if (gap > sideW() + 28) return false;            // room again (hysteresis avoids flapping)
+  return cur;
+};
+function updateLine() {
+  // a thin pulse under the notch says "music is playing" when both side items are hidden
+  document.body.classList.toggle('line-on', tuckL && tuckR && playingNow);
+}
+function applyMenubar(m) {
+  lastMenu = m;
+  const l = decide(tuckL, m.gap), r = decide(tuckR, m.gapR);
+  if (l !== tuckL) { tuckL = l; pill.classList.toggle('tuck-left', l); }
+  if (r !== tuckR) { tuckR = r; pill.classList.toggle('tuck-right', r); }
+  updateLine();
+}
 
 function applySettings(s) {
   settings = s;
   document.body.className = `theme-${['glass', 'art'].includes(s.theme) ? s.theme : 'dark'}`;
   document.documentElement.style.setProperty('--accent', s.accent);
+  applyMenubar(lastMenu);
 }
 function applyGeometry(n) {
   const root = document.documentElement.style;
   root.setProperty('--notch-w', `${n.width}px`);
   root.setProperty('--notch-h', `${n.hasNotch ? n.height : 32}px`);
   pill.classList.toggle('no-notch', !n.hasNotch);
+  hasNotch = n.hasNotch;
+  applyMenubar(lastMenu);
 }
 applySettings(settings);
 applyGeometry(cfg.notch);
 window.notch.on('shell:settings', applySettings);
 window.notch.on('shell:geometry', applyGeometry);
+window.notch.on('shell:menubar', applyMenubar);
 
 // ---------- widgets ----------
 const widgets = [];
@@ -45,12 +71,14 @@ function makeApi(meta, entry) {
     // widgets can tint the shell (used by the "Album colors" theme); null resets
     setPalette: (c) => {
       const r = document.documentElement.style;
-      if (c?.length) { r.setProperty('--art-1', c[0]); r.setProperty('--art-2', c[1] || c[0]); }
-      else { r.removeProperty('--art-1'); r.removeProperty('--art-2'); }
+      if (c?.length) { r.setProperty('--art-1', c[0]); r.setProperty('--art-2', c[1] || c[0]); r.setProperty('--art-vivid', c[2] || c[0]); }
+      else { r.removeProperty('--art-1'); r.removeProperty('--art-2'); r.removeProperty('--art-vivid'); }
     },
     // keep the card open (and keyboard-focusable) while a widget needs typing
     // called with true/false whenever the card opens or folds back
     onOpen: (cb) => openListeners.push(cb),
+    // true while music is actually playing (drives the thin "now playing" line under the notch)
+    setPlaying: (on) => { playingNow = !!on; updateLine(); },
     // 0..1 music energy; drives pulse effects in CSS (--beat)
     setBeat: (v) => document.documentElement.style.setProperty('--beat', String(Math.round(v * 100) / 100)),
     hold: (on) => { holdOpen = !!on; window.notch.invoke('shell:hold', !!on); if (on) setOpen(true); },
@@ -161,7 +189,11 @@ function setOpen(open) {
 }
 function inside(e) {
   const r = pill.getBoundingClientRect();
-  return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  // while tucked, the strip left of the notch belongs to the frontmost app's menus: let clicks through
+  const shut = !pill.classList.contains('open');
+  const left = tuckL && shut ? r.left + sideW() : r.left;
+  const right = tuckR && shut ? r.right - sideW() : r.right;
+  return e.clientX >= left && e.clientX <= right && e.clientY >= r.top && e.clientY <= r.bottom;
 }
 document.addEventListener('mousemove', (e) => {
   const hit = inside(e);

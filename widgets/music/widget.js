@@ -134,7 +134,9 @@ function paletteOf(img) {
     const warm = c.h < 55 || c.h > 320 ? .72 : 1;
     return hsl(c.h, Math.min(sMax * warm, (.12 + c.s * .55) * warm), Math.min(hi, Math.max(lo, c.l * .75)));
   };
-  return [tone(a, .5, .17, .27), tone(b, .45, .13, .22)];
+  // bright version of the cover's main colour for small accents (the notch pulse line)
+  const vivid = a.s < .18 ? hsl(a.h, .08, .82) : hsl(a.h, Math.min(1, .55 + a.s * .4), .62);
+  return [tone(a, .5, .17, .27), tone(b, .45, .13, .22), vivid];
 }
 const paletteCache = new Map();
 function loadPalette(url) {
@@ -362,6 +364,7 @@ export default {
 
       paintTime();
       api.setActivity(has);
+      api.setPlaying(!!s.playing);
       if ((s.art || '') !== artUrl) {
         artUrl = s.art || '';
         const want = artUrl;

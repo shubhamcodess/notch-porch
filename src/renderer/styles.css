@@ -7,7 +7,8 @@
   --accent: #ff375f;
   --notch-w: 200px;
   --notch-h: 37px;
-  --compact-w: calc(var(--notch-w) + 140px);
+  --side: 70px;
+  --compact-w: calc(var(--notch-w) + var(--side) * 2);
   --open-w: 380px;
   --open-h: 176px;
   --slot: 22px;
@@ -131,21 +132,29 @@ body.theme-art .rim { z-index: 1; }
     inset -1px 0 0 rgba(255,255,255,.06);
 }
 
-/* ── hardware notch cutout ── */
-.notch-cutout {
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: var(--notch-w); height: var(--notch-h);
-  border-radius: 0 0 12px 12px; background: #000; pointer-events: none; z-index: 2;
-}
-.pill.no-notch .notch-cutout { display: none; }
-
 /* ── collapsed compact slots ── */
 .compact {
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: var(--compact-w); height: var(--notch-h);
   box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px; z-index: 3; pointer-events: none;
+  padding: 0 14px; z-index: 1; pointer-events: none;
 }
+.slot.left { transition: transform .7s var(--ease); }
+/* app menus need the room: roll the left item behind the notch (and back out when there is space) */
+.pill.tuck-left .slot.left { transform: translateX(calc(var(--side) - 12px)) rotate(300deg); }
+.slot.right { transition: transform .7s var(--ease); }
+.pill.tuck-right .slot.right { transform: translateX(calc((var(--side) - 12px) * -1)) rotate(-300deg); }
+
+/* both sides tucked + music playing: a hairline right under the notch, tinted from the cover */
+.pulse-line {
+  position: absolute; top: var(--notch-h); left: 50%; pointer-events: none;
+  width: calc(var(--notch-w) - 44px); margin-left: calc((var(--notch-w) - 44px) / -2); height: 1px; border-radius: 1px;
+  background: var(--art-vivid, var(--accent));
+  opacity: 0; transition: opacity .6s ease, background .8s ease;
+}
+body.line-on .pulse-line { opacity: .6; animation: breathe 2.6s ease-in-out .6s infinite; filter: brightness(calc(.9 + var(--beat) * .5)); }
+body.line-on .pill.open + .pulse-line { opacity: 0; animation: none; }
+@keyframes breathe { 0%, 100% { opacity: .25; } 50% { opacity: .75; } }
 .slot { display: flex; align-items: center; gap: 5px; min-width: 0; }
 
 /* ── expanded content area ── */

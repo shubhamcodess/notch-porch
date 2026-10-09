@@ -19,6 +19,8 @@ Hover the notch and a card drops down. Move away and it folds back. Starring: a 
 - **Ad blocking.** Network ad/tracker blocking plus an ad-skip script, so music keeps playing.
 - **Live equalizer.** The bars beside the notch follow the actual audio (bass to treble), and the Album colors theme pulses gently with the beat.
 - **Sleep mode.** If nothing has played for 5 minutes, the disc and bars fade away and only a dim music note is left. Hover the notch, or start a song, to wake it.
+- **Makes room for app menus.** When the frontmost app's menus grow long enough to reach the left item, it rolls behind the notch and the strip is yours again (hover is disabled there so you can click the menus). When there's room again, it rolls back out. Needs Accessibility permission (see below); turn it off in the menu with **Make room for app menus**.
+- **Crowded menu bar? It adapts.** If status icons on the right also reach the notch, the equalizer rolls behind it too. With both sides hidden, a thin pulsing line in the cover's color appears under the notch while music plays, and hovering the notch still opens the card. Works with any notch size (Air and Pro).
 - **Themes.** Dark, Liquid glass, and **Album colors**, a slowly drifting gradient taken from the current cover art. Every theme fades to pure black at the top so the card merges with the hardware notch.
 - **Resource leaf.** A green leaf in the menu says everything is normal. It turns yellow and tells you when the app is using significant CPU or memory, or draining the battery.
 - **Quits cleanly.** Quitting Notch Porch also closes the hidden music player. Nothing keeps playing in the background.
@@ -64,7 +66,7 @@ npm start          # run it
 npm run dist       # build dist/Notch-Porch-arm64.dmg and .zip
 ```
 
-Needs Node 20+.
+Needs Node 20+ and the Xcode command line tools (`xcode-select --install`), which provide the compiler for the small native helper. Without them the app still runs, minus the app-menu feature.
 
 ## First run
 
@@ -83,6 +85,10 @@ Google sometimes says "this browser may not be secure". Import your cookies inst
 
 `cookies.json` stays on your Mac and is git-ignored. Treat it like a password.
 
+### Accessibility permission (for "make room for app menus")
+
+On first launch macOS asks to let Notch Porch control your computer using accessibility features. It's only used to read where the frontmost app's menu titles end, nothing else, and nothing leaves your Mac. If you decline, everything else works, and the disc just stays put. You can grant it later under **System Settings → Privacy & Security → Accessibility**, or from the menu item that appears when permission is missing.
+
 ## Using it
 
 | Do this | To get this |
@@ -100,8 +106,9 @@ Settings live in `~/Library/Application Support/notch-porch/settings.json`:
 |---|---|---|
 | `theme` | `dark` | `dark`, `glass` or `art` (also in the menu) |
 | `accent` | `#ff375f` | Accent colour for the visualizer and active buttons |
-| `notchWidth` | `200` | Notch width in px, if the pill doesn't line up with your notch |
+| `notchWidth` | `200` | Fallback notch width in px; the real size is detected automatically |
 | `adblock` | `true` | Turn the ad blocker off |
+| `menuAvoid` | `true` | Roll the left item behind the notch when app menus reach it |
 | `sleepMinutes` | `5` | Minutes paused before sleep mode (`0` = never). Also in the menu: Sleep after pause |
 
 ## Writing a widget
@@ -125,6 +132,7 @@ widgets/my-widget/
 
 ```
 src/main/        Electron main process: notch window, tray, resource monitor
+native/          menubar-watch.m: tiny helper that reads the frontmost app's menu extent
 src/renderer/    The card UI shell: layout, themes, hover logic, page switching
 widgets/music/   The YouTube Music widget (UI + hidden player + search)
 widgets/_example A starter widget

@@ -4,3 +4,4 @@ dist/
 cookies.json
 *.log
 .env
+build/menubar-watch
