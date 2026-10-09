@@ -1,8 +1,9 @@
+@property --beat { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --art-1 { syntax: '<color>'; inherits: true; initial-value: #34343a; }
 @property --art-2 { syntax: '<color>'; inherits: true; initial-value: #1a1a1e; }
 
 :root {
-  transition: --art-1 1s ease, --art-2 1s ease;
+  transition: --art-1 1s ease, --art-2 1s ease, --beat .12s linear;
   --accent: #ff375f;
   --notch-w: 200px;
   --notch-h: 37px;
@@ -98,7 +99,7 @@ body.theme-art .skin::before {
 }
 body.theme-art .skin::after {
   background: radial-gradient(circle at 74% 34%, color-mix(in srgb, var(--art-1) 85%, #fff) 0%, transparent 46%);
-  opacity: .55;
+  opacity: calc(.5 + var(--beat) * .4);
   animation: drift-b 34s ease-in-out infinite alternate;
 }
 body.theme-art .pill:not(.open) .skin::before,
@@ -216,14 +217,13 @@ body.theme-art .rim { z-index: 1; }
 .ctl.primary:hover { background: #fff; }
 .ctl.primary:active { transform: scale(.88); }
 
-/* tinted on-state (shuffle, like) */
-.ctl.on { color: var(--accent); }
-.ctl.on svg { filter: drop-shadow(0 0 4px rgba(255,55,95,.5)); }
+/* on-state (shuffle, like): accent-coloured icon, no background */
+.ctl.on, .ctl.on:hover, .ctl.ghost.on, .ctl.ghost.on:hover { color: var(--accent); background: transparent; }
 
 /* ghost small button (secondary actions) */
 .ctl.ghost {
   width: 32px; height: 32px;
-  background: transparent; color: var(--text-2);
+  background: transparent; color: rgba(255,255,255,.38);
 }
 .ctl.ghost:hover { background: rgba(255,255,255,.1); color: var(--text); }
 

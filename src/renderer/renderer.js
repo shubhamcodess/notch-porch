@@ -30,6 +30,7 @@ window.notch.on('shell:geometry', applyGeometry);
 // ---------- widgets ----------
 const widgets = [];
 let holdOpen = false;
+const openListeners = [];
 let active = 0;
 
 function makeApi(meta, entry) {
@@ -48,6 +49,10 @@ function makeApi(meta, entry) {
       else { r.removeProperty('--art-1'); r.removeProperty('--art-2'); }
     },
     // keep the card open (and keyboard-focusable) while a widget needs typing
+    // called with true/false whenever the card opens or folds back
+    onOpen: (cb) => openListeners.push(cb),
+    // 0..1 music energy; drives pulse effects in CSS (--beat)
+    setBeat: (v) => document.documentElement.style.setProperty('--beat', String(Math.round(v * 100) / 100)),
     hold: (on) => { holdOpen = !!on; window.notch.invoke('shell:hold', !!on); if (on) setOpen(true); },
     setHeight: (px) => {
       if (px) document.documentElement.style.setProperty('--open-h', `${px}px`);
@@ -149,8 +154,10 @@ let closeTimer = null;
 function setOpen(open) {
   if (!open && holdOpen) return;
   clearTimeout(closeTimer);
+  const was = pill.classList.contains('open');
   pill.classList.toggle('open', open);
   pill.classList.toggle('collapsed', !open);
+  if (was !== open) openListeners.forEach((cb) => cb(open));
 }
 function inside(e) {
   const r = pill.getBoundingClientRect();

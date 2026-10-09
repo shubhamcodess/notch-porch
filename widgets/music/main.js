@@ -28,12 +28,13 @@ const AD_SKIP = `
   }, 400);
 })();`;
 
+const AUDIO = fs.readFileSync(path.join(__dirname, 'audio-probe.js'), 'utf8');
+
 const STATE = `
 (() => {
   const v = document.querySelector('video');
   const m = navigator.mediaSession && navigator.mediaSession.metadata;
   const art = m && m.artwork && m.artwork.length ? m.artwork[m.artwork.length - 1].src : '';
-  const sh = document.querySelector('ytmusic-player-bar .shuffle');
   const like = document.querySelector('ytmusic-player-bar ytmusic-like-button-renderer');
   return {
     ready: !!v,
@@ -44,7 +45,7 @@ const STATE = `
     playing: !!v && !v.paused && !v.ended,
     t: v ? v.currentTime : 0,
     d: v && isFinite(v.duration) ? v.duration : 0,
-    shuffle: !!sh && (sh.getAttribute('aria-pressed') === 'true' || sh.hasAttribute('active') || sh.classList.contains('active')),
+    shuffle: !!document.querySelector('ytmusic-player-bar[shuffle-on]'),
     liked: !!like && like.getAttribute('like-status') === 'LIKE'
   };
 })()`;
@@ -140,8 +141,9 @@ exports.setup = async (ctx) => {
   player.webContents.setMaxListeners(30);
   player.webContents.setUserAgent(UA);
   player.on('close', (e) => { if (!ctx.quitting()) { e.preventDefault(); player.hide(); } });
-  player.webContents.on('did-finish-load', () => player.webContents.executeJavaScript(AD_SKIP).catch(() => {}));
-  player.webContents.on('did-navigate-in-page', () => player.webContents.executeJavaScript(AD_SKIP).catch(() => {}));
+  const inject = () => player.webContents.executeJavaScript(AD_SKIP + ';' + AUDIO).catch(() => {});
+  player.webContents.on('did-finish-load', inject);
+  player.webContents.on('did-navigate-in-page', inject);
   // YT Music asks "leave page?" while a song plays, which silently cancels our navigation
   player.webContents.on('will-prevent-unload', (e) => e.preventDefault());
   let autoplay = false;
@@ -160,6 +162,7 @@ exports.setup = async (ctx) => {
   // quitting the dock quits the music too
   ctx.onQuit(() => {
     clearInterval(poll);
+    clearInterval(levelTimer);
     if (player.isDestroyed()) return;
     player.webContents.setAudioMuted(true);
     player.destroy();
@@ -167,10 +170,21 @@ exports.setup = async (ctx) => {
 
   // push state to the notch ~1×/s
   let last = '';
+  // live audio levels for the equalizer (only while something is playing)
+  let playing = false, levelsBusy = false;
+  const levelTimer = setInterval(async () => {
+    if (!playing || levelsBusy || player.isDestroyed() || player.webContents.isLoading()) return;
+    levelsBusy = true;
+    const b = await run('window.__notchBands ? window.__notchBands() : null');
+    levelsBusy = false;
+    if (b) ctx.send('levels', b);
+  }, 70);
+
   const poll = setInterval(async () => {
     if (player.isDestroyed() || player.webContents.isLoading()) return;
     const s = await run(STATE);
     if (!s) return;
+    playing = !!s.playing;
     const key = JSON.stringify(s);
     if (key !== last) { last = key; ctx.send('state', s); }
   }, 1000);
@@ -180,7 +194,37 @@ exports.setup = async (ctx) => {
     const b = document.querySelector('ytmusic-player-bar #play-pause-button'); b && b.click(); return !!b; })()`));
   ctx.handle('next', () => run(click('ytmusic-player-bar .next-button')));
   ctx.handle('prev', () => run(click('ytmusic-player-bar .previous-button')));
-  ctx.handle('shuffle', () => run(click('ytmusic-player-bar .shuffle')));
+  // Shuffle: toggle on the current queue; with nothing queued, start a shuffled mix from
+  // recently played (signed in) or YouTube Music's home picks (signed out).
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const waitFor = async (js, ms) => { for (let t = 0; t < ms; t += 250) { const v = await run(js); if (v && (!Array.isArray(v) || v.length)) return v; await sleep(250); } return null; };
+  const loadAndWait = async (url) => {
+    await new Promise((resolve) => { const done = () => resolve(); player.webContents.once('did-finish-load', done); player.webContents.once('did-fail-load', done); player.loadURL(url).catch(() => {}); });
+  };
+  const SHUFFLE_ON = `(() => { const bar = document.querySelector('ytmusic-player-bar'); const b = bar && bar.querySelector('.shuffle'); if (b && !bar.hasAttribute('shuffle-on')) b.click(); return !!b; })()`;
+  const SEEDS = `(() => [...new Set([...document.querySelectorAll('a[href*="watch?v="]')].map((a) => (a.getAttribute('href').match(/[?&]v=([\\w-]{11})/) || [])[1]).filter(Boolean))])()`;
+  let shuffling = false;
+  ctx.handle('shuffle', async () => {
+    // a track is loaded → there is a queue; the (often hidden) button still works when clicked by script
+    if (await run(`(() => { if (!(navigator.mediaSession && navigator.mediaSession.metadata && navigator.mediaSession.metadata.title)) return false; const b = document.querySelector('ytmusic-player-bar .shuffle'); if (b) b.click(); return !!b; })()`)) return 'toggled';
+    if (shuffling) return 'busy';
+    shuffling = true;
+    try {
+      let seeds = [];
+      for (const page of [`${HOME}history`, HOME]) {   // history only has songs when signed in
+        await loadAndWait(page);
+        seeds = (await waitFor(SEEDS, 6000)) || [];
+        if (seeds.length) break;
+      }
+      if (!seeds.length) return 'empty';
+      const id = seeds[Math.floor(Math.random() * Math.min(seeds.length, 20))];
+      autoplay = true;
+      await loadAndWait(`${HOME}watch?v=${id}&list=RDAMVM${id}`);
+      await waitFor(`document.querySelectorAll('ytmusic-player-queue-item').length > 1`, 8000);
+      await run(SHUFFLE_ON);
+      return 'started';
+    } finally { shuffling = false; }
+  });
   ctx.handle('like', () => run(click('ytmusic-player-bar ytmusic-like-button-renderer #button-shape-like button, ytmusic-player-bar ytmusic-like-button-renderer .like')));
   ctx.handle('seek', (sec) => run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${Number(sec) || 0}; })()`));
   ctx.handle('search', (q) => searchSongs(ses, String(q || '').trim().slice(0, 120)));

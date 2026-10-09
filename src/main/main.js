@@ -27,7 +27,7 @@ let resourceHeavy = false;
 
 // ---------- settings (persisted in ~/Library/Application Support/notch-porch) ----------
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, lastWidget: null };
+const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, lastWidget: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) }; } catch { /* first run */ }
@@ -125,6 +125,12 @@ function buildTray(widgets) {
         label: 'Theme', submenu: ['dark', 'glass', 'art'].map((t) => ({
           label: { dark: 'Dark', glass: 'Liquid glass', art: 'Album colors' }[t], type: 'radio', checked: settings.theme === t,
           click: () => { settings.theme = t; saveSettings(); shell?.webContents.send('shell:settings', settings); }
+        }))
+      },
+      {
+        label: 'Sleep after pause', submenu: [0, 1, 2, 5, 10, 15, 30].map((m) => ({
+          label: m ? `${m} minute${m > 1 ? 's' : ''}` : 'Never', type: 'radio', checked: (settings.sleepMinutes ?? 5) === m,
+          click: () => { settings.sleepMinutes = m; saveSettings(); shell?.webContents.send('shell:settings', settings); }
         }))
       },
       { label: 'Launch at login', type: 'checkbox', checked: login, click: () => { app.setLoginItemSettings({ openAtLogin: !login }); rebuild(); } },

@@ -28,7 +28,8 @@ const CSS = `
 .m-disc, .m-eq { transition: opacity .3s ease, width .42s var(--ease), height .42s var(--ease); }
 .m-disc.idle { opacity: 0; }
 .m-eq.idle { display: none; }
-.m-note { display: none; color: rgba(255,255,255,.55); animation: pop-in .3s var(--ease); }
+.m-note { display: none; color: rgba(255,255,255,.55); animation: pop-in .3s var(--ease); transition: color .8s ease; }
+.m-note.faded { color: rgba(255,255,255,.2); }
 .m-note.show { display: block; }
 .m-note svg { display: block; width: calc(var(--eq-h) + 2px); height: calc(var(--eq-h) + 2px); transition: width .42s var(--ease), height .42s var(--ease); }
 
@@ -40,6 +41,8 @@ const CSS = `
   animation: eq .85s ease-in-out infinite; animation-play-state: paused;
 }
 .m-eq.on i { animation-play-state: running; }
+/* live: bars follow the real audio instead of the canned animation */
+.m-eq.live i { animation: none; transform: scaleY(var(--lv, .25)); transition: transform .09s linear; filter: brightness(calc(.85 + var(--beat) * .55)); }
 .m-eq i:nth-child(2) { animation-delay: .22s; }
 .m-eq i:nth-child(3) { animation-delay: .46s; }
 .m-eq i:nth-child(4) { animation-delay: .09s; }
@@ -212,6 +215,43 @@ export default {
     const likeBtn = $('.m-like');
     let state = { d: 0, t: 0 };
     let artUrl = '';
+    let has = false, asleep = false, cardOpen = false, lastActive = Date.now();
+
+    // ── sleep mode: paused for a while → dim note only, until hover or playback wakes it ──
+    const paintIdle = () => {
+      const hidden = !has || asleep;
+      disc.classList.toggle('idle', hidden);
+      eq.classList.toggle('idle', hidden);
+      note.classList.toggle('show', hidden);
+      note.classList.toggle('faded', asleep);
+    };
+    const touch = () => { lastActive = Date.now(); if (asleep) { asleep = false; paintIdle(); } };
+    api.onOpen((open) => { cardOpen = open; touch(); });
+    setInterval(() => {
+      const mins = api.settings.sleepMinutes ?? 5;
+      if (!mins || asleep || !has || state.playing || cardOpen) return;
+      if (Date.now() - lastActive > mins * 60000) { asleep = true; paintIdle(); }
+    }, 5000);
+
+    // ── live equalizer: real audio levels from the player ──
+    const bars = [...eq.children];
+    const peak = [0.2, 0.2, 0.2, 0.2];
+    let beat = 0, lastLevels = 0;
+    const stopLive = () => { eq.classList.remove('live'); beat = 0; api.setBeat(0); };
+    api.on('levels', (b) => {
+      if (!state.playing) return;
+      lastLevels = Date.now();
+      eq.classList.add('live');
+      b.forEach((v, i) => {
+        peak[i] = Math.max(peak[i] * 0.995, v, 0.12);        // adaptive gain per band
+        const l = Math.min(1, v / peak[i]);
+        bars[i].style.setProperty('--lv', (0.18 + 0.82 * Math.pow(l, 1.4)).toFixed(2));
+      });
+      const bass = Math.min(1, b[0] / peak[0]);
+      beat = Math.max(Math.max(0, (bass - 0.45) / 0.55), beat * 0.8); // fast attack, quick decay
+      api.setBeat(beat);
+    });
+    setInterval(() => { if (eq.classList.contains('live') && Date.now() - lastLevels > 1500) stopLive(); }, 500);
 
     $('.m-meta').onclick = () => { if (!state.title) api.invoke('openPlayer'); };
     $('.m-meta').style.cursor = 'pointer';
@@ -267,7 +307,11 @@ export default {
     playBtn.onclick = () => api.invoke('toggle');
     $('.m-next').onclick = () => api.invoke('next');
     $('.m-prev').onclick = () => api.invoke('prev');
-    shufBtn.onclick = () => api.invoke('shuffle');
+    shufBtn.onclick = async () => {
+      if (!state.title) artistEl.textContent = 'Finding something to shuffle…';
+      const r = await api.invoke('shuffle');
+      if (r === 'empty') artistEl.textContent = "Couldn't find anything to shuffle";
+    };
     likeBtn.onclick = () => api.invoke('like');
 
     barEl.onclick = (e) => {
@@ -296,15 +340,15 @@ export default {
 
     api.on('state', (s) => {
       state = s;
-      const has = !!s.title;
+      has = !!s.title;
+      if (s.playing) touch();
+      if (!s.playing && eq.classList.contains('live')) stopLive();
       titleEl.textContent = has ? s.title : 'Nothing playing';
       artistEl.textContent = has
         ? [s.artist, s.album].filter(Boolean).join(' · ')
         : 'Click to open YouTube Music';
 
-      disc.classList.toggle('idle', !has);
-      eq.classList.toggle('idle', !has);
-      note.classList.toggle('show', !has);
+      paintIdle();
       disc.classList.toggle('spin', !!s.playing);
       disc.style.backgroundImage = s.art ? `url("${s.art.replace(/"/g, '')}")` : '';
       eq.classList.toggle('on', !!s.playing);

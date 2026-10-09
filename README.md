@@ -17,6 +17,8 @@ Hover the notch and a card drops down. Move away and it folds back. Starring: a 
 - **YouTube Music player.** Play/pause, next/previous, shuffle, like, seek. It runs YouTube Music in a hidden window, so your own account, library and playlists just work.
 - **Search inside the notch.** Click the magnifier, type, and play a song without opening any window.
 - **Ad blocking.** Network ad/tracker blocking plus an ad-skip script, so music keeps playing.
+- **Live equalizer.** The bars beside the notch follow the actual audio (bass to treble), and the Album colors theme pulses gently with the beat.
+- **Sleep mode.** If nothing has played for 5 minutes, the disc and bars fade away and only a dim music note is left. Hover the notch, or start a song, to wake it.
 - **Themes.** Dark, Liquid glass, and **Album colors**, a slowly drifting gradient taken from the current cover art. Every theme fades to pure black at the top so the card merges with the hardware notch.
 - **Resource leaf.** A green leaf in the menu says everything is normal. It turns yellow and tells you when the app is using significant CPU or memory, or draining the battery.
 - **Quits cleanly.** Quitting Notch Porch also closes the hidden music player. Nothing keeps playing in the background.
@@ -88,6 +90,7 @@ Google sometimes says "this browser may not be secure". Import your cookies inst
 | Hover the notch | Open the card |
 | Move the cursor away | Fold it back |
 | Click the magnifier (or double-click the title) | Search for a song. Enter plays the first result, Esc goes back |
+| Click shuffle | Shuffle the current queue. With nothing playing, it starts a shuffled mix from your recently played songs (signed in) or YouTube Music's home picks (signed out) |
 | Two-finger swipe sideways | Switch widgets (when you have more than one) |
 | Menu-bar icon | Theme, Launch at login, resource status, YouTube Music window, Reload, Quit |
 
@@ -99,6 +102,7 @@ Settings live in `~/Library/Application Support/notch-porch/settings.json`:
 | `accent` | `#ff375f` | Accent colour for the visualizer and active buttons |
 | `notchWidth` | `200` | Notch width in px, if the pill doesn't line up with your notch |
 | `adblock` | `true` | Turn the ad blocker off |
+| `sleepMinutes` | `5` | Minutes paused before sleep mode (`0` = never). Also in the menu: Sleep after pause |
 
 ## Writing a widget
 

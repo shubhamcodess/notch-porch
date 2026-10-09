@@ -32,6 +32,7 @@ User data: `~/Library/Application Support/notch-porch/` (settings.json, `persist
 - Notch detected from menu-bar height (>= 32px). Width from `notchWidth` setting (default 200).
 - Re-inserting DOM nodes restarts CSS animations — `renderCompact` and `setActivity` are guarded for that reason (album art spin).
 - Music: hidden `BrowserWindow` on `persist:ytmusic` with a Chrome UA; state polled 1/s via `executeJavaScript` (mediaSession + DOM selectors). Search uses the `youtubei/v1/search` web API from the main process; playing a result loads `watch?v=ID` (needs `will-prevent-unload` handled and `autoplayPolicy: 'no-user-gesture-required'`).
+- Live equalizer: `widgets/music/audio-probe.js` is injected into the hidden page and taps the `<video>` with a Web Audio analyser (`window.__notchBands()` → 4 band levels). Main polls it every 70 ms only while playing and sends `levels`; the widget drives the bars (`--lv`) and `api.setBeat()` (`--beat`). Taps on MediaStream-backed elements return silence in Chrome, which is fine for YT Music (MSE/blob). Sleep mode (`sleepMinutes` setting) lives in the widget and uses `api.onOpen`.
 - Signing: `mac.identity: null` + `scripts/adhoc-sign.js` (afterPack). Never sign with a keychain identity; Apple Silicon needs the ad-hoc seal or the app won't launch.
 
 ## Design language (keep it)
