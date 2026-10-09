@@ -11,6 +11,7 @@ const ICONS = {
   heart: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-8.6C1.2 8.2 3.2 5 6.4 5c2 0 3.3 1.1 4.1 2.3h3c.8-1.2 2.1-2.3 4.1-2.3 3.2 0 5.2 3.2 3.6 6.4C19 15.6 12 20 12 20z"/></svg>`,
   search: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>`,
   back: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>`,
+  lyrics: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6.5L8 21v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M7.5 9h9M7.5 12.5h5.5"/></svg>`,
   heartFill: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.4-9.2-8.6C1.2 8.2 3.2 5 6.4 5c2 0 3.3 1.1 4.1 2.3h3c.8-1.2 2.1-2.3 4.1-2.3 3.2 0 5.2 3.2 3.6 6.4C19 15.6 12 20 12 20z"/></svg>`,
 };
 
@@ -54,9 +55,11 @@ const CSS = `
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(255,255,255,.96);
 }
 .m-artist {
-  max-width: 100%; font-size: 12px; letter-spacing: -.1px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(255,255,255,.5);
+  max-width: 100%; font-size: 12px; letter-spacing: -.1px; min-height: 16px; line-height: 16px;
+  display: grid; justify-items: center; color: rgba(255,255,255,.5); transition: color .4s ease;
 }
+.m-artist > span { grid-area: 1 / 1; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-artist.lyric { color: rgba(255,255,255,.86); font-weight: 500; }
 
 /* ── progress ── */
 .m-scrub {
@@ -70,8 +73,9 @@ const CSS = `
 /* ── search ── */
 .m-meta { padding: 0 34px; }
 .m-open-search { position: absolute; top: -3px; right: -6px; }
+.m-lyr-btn { position: absolute; top: -3px; left: -6px; }
 .m-find { display: none; flex-direction: column; gap: 8px; min-height: 0; flex: 1; }
-.searching .m-meta, .searching .m-scrub, .searching .m-ctrls, .searching .m-open-search { display: none; }
+.searching .m-meta, .searching .m-scrub, .searching .m-ctrls, .searching .m-open-search, .searching .m-lyr-btn { display: none; }
 .searching .m-find { display: flex; }
 .m-find-bar { display: flex; align-items: center; gap: 6px; }
 .m-input {
@@ -173,10 +177,11 @@ export default {
 
     // ── expanded (below the notch) ──
     page.innerHTML = `
+      <button class="ctl ghost m-lyr-btn" aria-label="Show lyrics" title="Lyrics">${ICONS.lyrics}</button>
       <button class="ctl ghost m-open-search" aria-label="Search songs" title="Search">${ICONS.search}</button>
       <div class="m-meta">
         <div class="m-title">Nothing playing</div>
-        <div class="m-artist">Click to open YouTube Music</div>
+        <div class="m-artist"><span class="cur">Click to open YouTube Music</span></div>
       </div>
 
       <div class="m-scrub">
@@ -240,8 +245,11 @@ export default {
     const peak = [0.2, 0.2, 0.2, 0.2];
     let beat = 0, lastLevels = 0;
     const stopLive = () => { eq.classList.remove('live'); beat = 0; api.setBeat(0); };
-    api.on('levels', (b) => {
+    api.on('levels', (m) => {
       if (!state.playing) return;
+      base = { t: m.t, at: performance.now() };      // exact playback time ~14×/s keeps lyrics in sync through seeks
+      const b = m.b;
+      if (!b) return;
       lastLevels = Date.now();
       eq.classList.add('live');
       b.forEach((v, i) => {
@@ -340,15 +348,68 @@ export default {
       fillEl.style.width = state.d ? `${(state.t / state.d) * 100}%` : '0%';
     }
 
+    // ── lyrics: one synced line in place of the artist name (card) and/or a caption under the notch ──
+    let artistDefault = 'Click to open YouTube Music';
+    let lyr = { key: '', lines: null };
+    let base = { t: 0, at: performance.now() };      // playback clock sampled when state arrives
+    let lastLine = null, lastCard = null, wasPlaying = false;
+    const lyrBtn = $('.m-lyr-btn');
+
+    const swap = (el, text) => {                      // crossfade the line (new rises in, old drifts out)
+      const cur = el.querySelector('.cur');
+      if (cur && cur.textContent === text) return;
+      const next = Object.assign(document.createElement('span'), { className: 'cur', textContent: text });
+      if (!cur) { el.textContent = ''; el.append(next); return; }
+      cur.className = 'old'; next.classList.add('in'); el.append(next);
+      setTimeout(() => cur.remove(), 320);
+    };
+    const lyricNow = () => {                          // current line text, '' for an instrumental gap, null if none yet
+      const L = lyr.lines;
+      if (!L) return null;
+      const t = base.t + (state.playing ? (performance.now() - base.at) / 1000 : 0) + 0.25;   // show a hair early
+      let lo = 0, hi = L.length - 1, i = -1;
+      while (lo <= hi) { const m = (lo + hi) >> 1; if (L[m][0] <= t) { i = m; lo = m + 1; } else hi = m - 1; }
+      return i < 0 ? null : L[i][1];
+    };
+    const paintArtist = () => {
+      const on = !!api.settings.lyrics, line = on ? lyricNow() : null;
+      const text = line !== null ? (line || '♪') : artistDefault;
+      artistEl.classList.toggle('lyric', line !== null);
+      swap(artistEl, text);
+    };
+    async function fetchLyrics() {
+      const key = `${state.title}|${state.artist}`;
+      if (!state.title || lyr.key === key || !state.d) return;     // wait for the duration: it makes matching reliable
+      lyr = { key, lines: null };
+      const res = await api.invoke('lyrics', { title: state.title, artist: state.artist, album: state.album, duration: state.d });
+      if (lyr.key === key) lyr.lines = res && res.lines ? res.lines : null;
+    }
+    setInterval(() => {
+      const card = !!api.settings.lyrics, cap = !!api.settings.lyricsSubtitle;
+      lyrBtn.classList.toggle('on', card);
+      lyrBtn.setAttribute('aria-pressed', String(card));
+      if (card !== lastCard) { lastCard = card; paintArtist(); }
+      if (!(card || cap) || !has) { if (lastLine !== null) { lastLine = null; api.setCaption(null); } return; }
+      fetchLyrics();
+      const line = lyricNow();
+      if (line === lastLine) return;
+      lastLine = line;
+      if (card) paintArtist();
+      api.setCaption(cap && state.playing && line ? line : null);   // nothing during instrumental gaps
+    }, 150);
+    lyrBtn.onclick = () => api.setSetting('lyrics', !api.settings.lyrics);
+
     api.on('state', (s) => {
       state = s;
+      base = { t: s.t || 0, at: performance.now() };
+      if (!s.playing) api.setCaption(null);
+      if (s.playing !== wasPlaying) { wasPlaying = s.playing; lastLine = undefined; }   // re-show the caption on resume
       has = !!s.title;
       if (s.playing) touch();
       if (!s.playing && eq.classList.contains('live')) stopLive();
       titleEl.textContent = has ? s.title : 'Nothing playing';
-      artistEl.textContent = has
-        ? [s.artist, s.album].filter(Boolean).join(' · ')
-        : 'Click to open YouTube Music';
+      artistDefault = has ? [s.artist, s.album].filter(Boolean).join(' · ') : 'Click to open YouTube Music';
+      paintArtist();
 
       paintIdle();
       disc.classList.toggle('spin', !!s.playing);

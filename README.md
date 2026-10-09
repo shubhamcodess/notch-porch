@@ -21,6 +21,7 @@ Hover the notch and a card drops down. Move away and it folds back. Starring: a 
 - **Sleep mode.** If nothing has played for 5 minutes, the disc and bars fade away and only a dim music note is left. Hover the notch, or start a song, to wake it.
 - **Makes room for app menus.** When the frontmost app's menus grow long enough to reach the left item, it rolls behind the notch and the strip is yours again (hover is disabled there so you can click the menus). When there's room again, it rolls back out. Needs Accessibility permission (see below); turn it off in the menu with **Make room for app menus**.
 - **Crowded menu bar? It adapts.** If status icons on the right also reach the notch, the equalizer rolls behind it too. With both sides hidden, a thin pulsing line in the cover's color appears under the notch while music plays, and hovering the notch still opens the card. Works with any notch size (Air and Pro).
+- **Synced lyrics.** Tap the lyrics button (top-left of the card) and the artist name becomes the current lyric line, changing in time with the song. When the lyrics library has the same song written in English letters (romanised Tamil, Telugu, Hindi…), that version is preferred over the native-script one. If no reliable match is found, it simply stays the artist name. In the menu-bar menu, **Music → Show lyrics under the notch** also shows each line as a small caption under the notch while the card is closed. Lyrics come from [LRCLIB](https://lrclib.net) and are cached locally, never bundled.
 - **Themes.** Dark, Liquid glass, and **Album colors**, a slowly drifting gradient taken from the current cover art. Every theme fades to pure black at the top so the card merges with the hardware notch.
 - **Resource leaf.** A green leaf in the menu says everything is normal. It turns yellow and tells you when the app is using significant CPU or memory, or draining the battery.
 - **Quits cleanly.** Quitting Notch Porch also closes the hidden music player. Nothing keeps playing in the background.
@@ -71,7 +72,7 @@ Needs Node 20+ and the Xcode command line tools (`xcode-select --install`), whic
 ## First run
 
 1. A small pill-and-bars icon appears in the menu bar, and a small pill sits beside the notch. There's no Dock icon.
-2. Hover the notch to open the card, then click **Click to open YouTube Music**. (Or use **Menu-bar icon → Open YouTube Music window**.)
+2. Hover the notch to open the card, then click **Click to open YouTube Music**. (Or use **Menu-bar icon → Music → Open YouTube Music window**.)
 3. Sign in to your Google account and play anything. Close the window; it just hides.
 4. Your login is remembered. From now on the notch shows what's playing.
 
@@ -80,8 +81,8 @@ Needs Node 20+ and the Xcode command line tools (`xcode-select --install`), whic
 Google sometimes says "this browser may not be secure". Import your cookies instead:
 
 1. Export your `youtube.com` / `google.com` cookies as JSON (the Cookie-Editor extension's export works).
-2. **Menu-bar icon → Show data folder**, and save the file there as `cookies.json`.
-3. **Menu-bar icon → Re-import cookies.json**.
+2. **Menu-bar icon → Music → Show data folder**, and save the file there as `cookies.json`.
+3. **Menu-bar icon → Music → Re-import cookies.json**.
 
 `cookies.json` stays on your Mac and is git-ignored. Treat it like a password.
 
@@ -108,8 +109,10 @@ Settings live in `~/Library/Application Support/notch-porch/settings.json`:
 | `accent` | `#ff375f` | Accent colour for the visualizer and active buttons |
 | `notchWidth` | `200` | Fallback notch width in px; the real size is detected automatically |
 | `adblock` | `true` | Turn the ad blocker off |
+| `lyrics` | `false` | Show the current lyric line in the card (also the button in the card) |
+| `lyricsSubtitle` | `false` | Show lyrics as a caption under the notch while the card is closed |
 | `menuAvoid` | `true` | Roll the left item behind the notch when app menus reach it |
-| `sleepMinutes` | `5` | Minutes paused before sleep mode (`0` = never). Also in the menu: Sleep after pause |
+| `sleepMinutes` | `5` | Minutes paused before sleep mode (`0` = never). Also in the menu: Music → Sleep after pause |
 
 ## Writing a widget
 
@@ -150,7 +153,7 @@ rm -rf ~/Library/Application\ Support/notch-porch
 
 ## Disclaimer
 
-Notch Porch is an independent project and is **not affiliated with or endorsed by Google or YouTube**. It loads the official YouTube Music website in a hidden window and adds a notch interface on top. Blocking ads may go against YouTube's terms of service; use it at your own discretion, and consider [YouTube Premium](https://www.youtube.com/premium) to support artists and the platform.
+Notch Porch is an independent project and is **not affiliated with or endorsed by Google or YouTube**. It loads the official YouTube Music website in a hidden window and adds a notch interface on top. Lyrics are fetched live from LRCLIB for personal use and are subject to their owners' copyrights. Blocking ads may go against YouTube's terms of service; use it at your own discretion, and consider [YouTube Premium](https://www.youtube.com/premium) to support artists and the platform.
 
 ## License
 

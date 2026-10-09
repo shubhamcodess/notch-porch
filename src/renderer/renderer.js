@@ -53,6 +53,27 @@ window.notch.on('shell:settings', applySettings);
 window.notch.on('shell:geometry', applyGeometry);
 window.notch.on('shell:menubar', applyMenubar);
 
+// ---------- caption under the notch ----------
+const capEl = document.querySelector('.lyric-caption'), capText = capEl.querySelector('.cap-text');
+let capCur = null, capShrink = null;
+function setCaption(text) {
+  if (text === capCur) return;
+  capCur = text;
+  document.body.classList.toggle('cap-on', !!text);
+  if (!text) return;                                  // keep the old text while it fades out
+  const old = capText.querySelector('.cur');
+  const next = document.createElement('span');
+  next.className = 'cur'; next.textContent = text;
+  if (old) { old.className = 'old'; next.classList.add('in'); setTimeout(() => old.remove(), 360); } else capText.textContent = '';
+  capText.append(next);
+  // the box is always at least as wide as both lines (nothing is ever clipped); it narrows once the old line has gone
+  const w = next.offsetWidth, widest = old ? Math.max(w, old.offsetWidth) : w;
+  clearTimeout(capShrink);
+  capText.style.transition = 'none';
+  capText.style.width = `${widest}px`;
+  if (widest !== w) capShrink = setTimeout(() => { capText.style.transition = 'width .4s var(--ease)'; capText.style.width = `${w}px`; }, 380);
+}
+
 // ---------- widgets ----------
 const widgets = [];
 let holdOpen = false;
@@ -77,6 +98,10 @@ function makeApi(meta, entry) {
     // keep the card open (and keyboard-focusable) while a widget needs typing
     // called with true/false whenever the card opens or folds back
     onOpen: (cb) => openListeners.push(cb),
+    // persist a setting (also updates the local copy so widgets see it immediately)
+    setSetting: (k, v) => { settings = { ...settings, [k]: v }; window.notch.invoke('shell:setSetting', k, v); },
+    // a one-line caption under the notch (e.g. a lyric); null hides it. Only visible while the card is closed.
+    setCaption: (text) => setCaption(text),
     // true while music is actually playing (drives the thin "now playing" line under the notch)
     setPlaying: (on) => { playingNow = !!on; updateLine(); },
     // 0..1 music energy; drives pulse effects in CSS (--beat)

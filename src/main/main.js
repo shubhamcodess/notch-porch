@@ -28,12 +28,12 @@ let menuTrusted = true;   // false while the helper reports missing Accessibilit
 let lastMenuRight = null;
 let lastStatusLeft = null;
 let rebuildTray = () => {};
-let resourceLabel = 'Normal';
+let resourceStats = '';
 let resourceHeavy = false;
 
 // ---------- settings (persisted in ~/Library/Application Support/notch-porch) ----------
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, menuAvoid: true, menuAvoidAsked: false, lastWidget: null };
+const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, menuAvoid: true, menuAvoidAsked: false, lyrics: false, lyricsSubtitle: false, lastWidget: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) }; } catch { /* first run */ }
@@ -65,7 +65,9 @@ async function setupWidgetMains(widgets) {
       onQuit: (fn) => quitHooks.push(fn),
       handle: (name, fn) => ipcMain.handle(ns + name, (_e, ...args) => fn(...args)),
       send: (name, data) => { if (shell && !shell.isDestroyed()) shell.webContents.send(ns + name, data); },
-      menuItems: [] // widgets can push tray menu items here
+      menuItems: [], // static tray items (shown in the widget's submenu)
+      menu: (fn) => { w._menuFn = fn; },            // dynamic items: fn() is called every time the tray menu is rebuilt
+      setSetting: (key, value) => { settings[key] = value; saveSettings(); shell?.webContents.send('shell:settings', settings); rebuildTray(); }
     };
     try {
       await mod.setup(ctx);
@@ -131,41 +133,41 @@ function buildTray(widgets) {
   tray = new Tray(trayIcon);
   const rebuild = () => {
     const login = app.getLoginItemSettings().openAtLogin;
-    tray.setToolTip(`Notch Porch — ${resourceLabel}`);
-    tray.setContextMenu(Menu.buildFromTemplate([
-      { label: resourceLabel, enabled: false, icon: resourceHeavy ? leaves.yellow : leaves.green },
+    tray.setToolTip(`Notch Porch — ${resourceHeavy ? 'using significant resources' : 'running normally'}`);
+    const save = () => { saveSettings(); shell?.webContents.send('shell:settings', settings); };
+    // every widget gets its own submenu named after it
+    const widgetMenus = widgets.map((w) => ({ label: w.name, submenu: [...(w._menu || []), ...(w._menuFn ? w._menuFn() : [])] })).filter((m) => m.submenu.length);
+    const grantAccess = () => { startMenuWatch(true); require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); };
+    const template = [
+      { label: resourceHeavy ? 'Using significant resources' : 'Running normally', sublabel: resourceStats, enabled: false, icon: resourceHeavy ? leaves.yellow : leaves.green },
       { type: 'separator' },
-      ...widgets.flatMap((w) => (w._menu?.length ? [{ label: w.name, enabled: false }, ...w._menu, { type: 'separator' }] : [])),
+      ...widgetMenus,
       {
         label: 'Theme', submenu: ['dark', 'glass', 'art'].map((t) => ({
           label: { dark: 'Dark', glass: 'Liquid glass', art: 'Album colors' }[t], type: 'radio', checked: settings.theme === t,
-          click: () => { settings.theme = t; saveSettings(); shell?.webContents.send('shell:settings', settings); }
+          click: () => { settings.theme = t; save(); }
         }))
       },
       {
-        label: 'Sleep after pause', submenu: [0, 1, 2, 5, 10, 15, 30].map((m) => ({
-          label: m ? `${m} minute${m > 1 ? 's' : ''}` : 'Never', type: 'radio', checked: (settings.sleepMinutes ?? 5) === m,
-          click: () => { settings.sleepMinutes = m; saveSettings(); shell?.webContents.send('shell:settings', settings); }
-        }))
+        label: 'Settings', submenu: [
+          {
+            label: 'Make room for app menus', type: 'checkbox', checked: settings.menuAvoid !== false,
+            click: (item) => {
+              settings.menuAvoid = item.checked; save();
+              if (item.checked) startMenuWatch(true); else { stopMenuWatch(); sendMenubar(null); }
+              rebuild();
+            }
+          },
+          ...(settings.menuAvoid !== false && !menuTrusted ? [{ label: 'Allow Accessibility access…', click: grantAccess }] : []),
+          { label: 'Launch at login', type: 'checkbox', checked: login, click: () => { app.setLoginItemSettings({ openAtLogin: !login }); rebuild(); } }
+        ]
       },
-      {
-        label: 'Make room for app menus', type: 'checkbox', checked: settings.menuAvoid !== false,
-        click: (item) => {
-          settings.menuAvoid = item.checked; saveSettings();
-          shell?.webContents.send('shell:settings', settings);
-          if (item.checked) startMenuWatch(true); else { stopMenuWatch(); sendMenubar(null); }
-          rebuild();
-        }
-      },
-      ...(settings.menuAvoid !== false && !menuTrusted ? [{
-        label: 'Allow Accessibility access to enable this…',
-        click: () => { startMenuWatch(true); require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); }
-      }] : []),
-      { label: 'Launch at login', type: 'checkbox', checked: login, click: () => { app.setLoginItemSettings({ openAtLogin: !login }); rebuild(); } },
       { type: 'separator' },
       { label: 'Reload dock', click: () => { if (!shell || shell.isDestroyed()) createShell(); else shell.reload(); } },
       { label: 'Quit Notch Porch', click: () => app.quit() }
-    ]));
+    ];
+    if (process.env.NOTCH_DEBUG) { const tree = (m) => m.map((i) => i.type === 'separator' ? '---' : i.label + (i.checked ? ' [x]' : '') + (i.submenu ? ' > (' + tree(i.submenu).join(' | ') + ')' : '')); console.log('[menu]', tree(template).join('\n       ')); }
+    tray.setContextMenu(Menu.buildFromTemplate(template));
   };
   rebuildTray = rebuild;
   rebuild();
@@ -187,7 +189,7 @@ function startResourceMonitor(rebuild) {
     const mem = memMB >= 1024 ? `${(memMB / 1024).toFixed(1)} GB` : `${Math.round(memMB)} MB`;
     const stats = `${mem} · CPU ${Math.round(avg)}%${onBattery ? ' · on battery' : ''}`;
     resourceHeavy = heavy;
-    resourceLabel = heavy ? `Using significant resources — ${stats}` : `Normal — ${stats}`;
+    resourceStats = stats;
     rebuild();
   };
   tick();

@@ -28,6 +28,7 @@ const AD_SKIP = `
   }, 400);
 })();`;
 
+const { getLyrics } = require('./lyrics');
 const AUDIO = fs.readFileSync(path.join(__dirname, 'audio-probe.js'), 'utf8');
 
 const STATE = `
@@ -175,9 +176,9 @@ exports.setup = async (ctx) => {
   const levelTimer = setInterval(async () => {
     if (!playing || levelsBusy || player.isDestroyed() || player.webContents.isLoading()) return;
     levelsBusy = true;
-    const b = await run('window.__notchBands ? window.__notchBands() : null');
+    const m = await run(`(() => { const v = document.querySelector('video'); return v ? { b: window.__notchBands ? window.__notchBands() : null, t: v.currentTime } : null; })()`);
     levelsBusy = false;
-    if (b) ctx.send('levels', b);
+    if (m) ctx.send('levels', m);
   }, 70);
 
   const poll = setInterval(async () => {
@@ -227,6 +228,7 @@ exports.setup = async (ctx) => {
   });
   ctx.handle('like', () => run(click('ytmusic-player-bar ytmusic-like-button-renderer #button-shape-like button, ytmusic-player-bar ytmusic-like-button-renderer .like')));
   ctx.handle('seek', (sec) => run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${Number(sec) || 0}; })()`));
+  ctx.handle('lyrics', (meta) => getLyrics(meta, ctx.userData));
   ctx.handle('search', (q) => searchSongs(ses, String(q || '').trim().slice(0, 120)));
   ctx.handle('play', (id) => {
     if (!/^[\w-]{6,20}$/.test(String(id))) return false;
@@ -237,9 +239,19 @@ exports.setup = async (ctx) => {
   ctx.handle('openPlayer', () => showPlayer());
   ctx.handle('reloadCookies', async () => { const n = await importCookies(ses, ctx.userData); player.reload(); return n; });
 
-  ctx.menuItems.push(
+  const SLEEP_CHOICES = [0, 1, 2, 5, 10, 15, 30];
+  ctx.menu(() => [
     { label: 'Open YouTube Music window', click: showPlayer },
+    { type: 'separator' },
+    { label: 'Show lyrics under the notch', type: 'checkbox', checked: !!ctx.settings.lyricsSubtitle, click: (item) => ctx.setSetting('lyricsSubtitle', item.checked) },
+    {
+      label: 'Sleep after pause', submenu: SLEEP_CHOICES.map((m) => ({
+        label: m ? `${m} minute${m > 1 ? 's' : ''}` : 'Never', type: 'radio', checked: (ctx.settings.sleepMinutes ?? 5) === m,
+        click: () => ctx.setSetting('sleepMinutes', m)
+      }))
+    },
+    { type: 'separator' },
     { label: 'Re-import cookies.json', click: async () => { await importCookies(ses, ctx.userData); player.reload(); } },
     { label: 'Show data folder (cookies.json goes here)', click: () => require('electron').shell.openPath(ctx.userData) }
-  );
+  ]);
 };
