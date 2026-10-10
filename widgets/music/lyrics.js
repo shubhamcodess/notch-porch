@@ -40,6 +40,13 @@ function latinShare(lrc) {
   return letters.length ? letters.filter((c) => /[A-Za-z\u00C0-\u024F]/.test(c)).length / letters.length : 0;
 }
 
+// latest timestamp in an LRC file (seconds)
+function lastStamp(lrc) {
+  let max = 0;
+  for (const m of String(lrc || '').matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)) max = Math.max(max, +m[1] * 60 + +m[2]);
+  return max;
+}
+
 function parseLrc(text) {
   const lines = [];
   for (const raw of String(text || '').split('\n')) {
@@ -71,6 +78,9 @@ function pick(results, meta) {
     if (sim < 0.6) continue;
     const dd = meta.duration > 0 && r.duration > 0 ? Math.abs(r.duration - meta.duration) : null;
     if (dd !== null && dd > 5) continue;                                  // a different cut
+    // entries often state the right length but are timed for a different (longer) cut of the song: a lyric
+    // that is sung after the track has ended cannot belong to this recording
+    if (meta.duration > 0 && lastStamp(r.syncedLyrics) > meta.duration + 6) continue;
     if (!sameVersion(meta.title, r.trackName)) continue;                  // remix vs original, slowed vs normal…
     const artistOk = wantArtists.length && tokens(r.artistName).some((w) => wantArtists.includes(w));
     if (!artistOk && !(dd !== null && dd <= 1.5 && sim >= 0.99)) continue;     // same title, unrelated artist
@@ -83,7 +93,7 @@ function pick(results, meta) {
 
 async function getLyrics(meta, cacheDir) {
   if (!meta || !meta.title) return null;
-  const key = crypto.createHash('sha1').update(`v6|${fold(meta.title)}|${fold(meta.artist)}|${Math.round((meta.duration || 0) / 4)}`).digest('hex');
+  const key = crypto.createHash('sha1').update(`v7|${fold(meta.title)}|${fold(meta.artist)}|${Math.round((meta.duration || 0) / 4)}`).digest('hex');
   const file = cacheDir && path.join(cacheDir, 'lyrics', `${key}.json`);
   try {
     const c = JSON.parse(fs.readFileSync(file, 'utf8'));

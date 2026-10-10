@@ -8,6 +8,7 @@
   --notch-w: 200px;
   --notch-h: 37px;
   --side: 70px;
+  --edge-gap: 10px;             /* how far the side items sit from the notch */
   --compact-w: calc(var(--notch-w) + var(--side) * 2);
   --open-w: 380px;
   --open-h: 176px;
@@ -107,6 +108,8 @@ body.theme-art .pill:not(.open) .skin::before,
 body.theme-art .pill:not(.open) .skin::after { animation-play-state: paused; }
 body.theme-art .sheen { z-index: 1; }
 body.theme-art .rim { z-index: 1; }
+/* equalizer colour: a soft tone of the cover in Album colors; the accent everywhere else */
+body.theme-art { --eq-color: color-mix(in srgb, color-mix(in srgb, var(--art-vivid, var(--accent)) 70%, #fff) 88%, transparent); }
 @keyframes drift-a {
   0%   { transform: translate(-6%, 4%) rotate(0deg) scale(1); }
   50%  { transform: translate(5%, -5%) rotate(14deg) scale(1.12); }
@@ -137,13 +140,18 @@ body.theme-art .rim { z-index: 1; }
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: var(--compact-w); height: var(--notch-h);
   box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px; z-index: 1; pointer-events: none;
+  padding: 0; z-index: 1; pointer-events: none;
 }
-.slot.left { transition: transform .7s var(--ease); }
+/* each side is a fixed lane next to the notch; its item hugs the notch edge and grows outwards */
+.slot.left, .slot.right { width: var(--side); box-sizing: border-box; flex-shrink: 0; }
+.slot.left { justify-content: flex-end; padding-right: var(--edge-gap); transition: padding .5s var(--ease); }
+.slot.right { justify-content: flex-start; padding-left: var(--edge-gap); transition: padding .5s var(--ease); }
+/* on hover the items ease a little away from the notch, and glide back when the card folds */
+.pill.open { --edge-gap: 22px; }
+.slot.left > .slot, .slot.right > .slot { transition: transform .7s var(--ease); }
 /* app menus need the room: roll the left item behind the notch (and back out when there is space) */
-.pill.tuck-left .slot.left { transform: translateX(calc(var(--side) - 12px)) rotate(300deg); }
-.slot.right { transition: transform .7s var(--ease); }
-.pill.tuck-right .slot.right { transform: translateX(calc((var(--side) - 12px) * -1)) rotate(-300deg); }
+.pill.tuck-left .slot.left > .slot { transform: translateX(calc(var(--side) - 8px)) rotate(300deg); }
+.pill.tuck-right .slot.right > .slot { transform: translateX(calc((var(--side) - 8px) * -1)) rotate(-300deg); }
 
 /* both sides tucked + music playing: a hairline right under the notch, tinted from the cover */
 .pulse-line {

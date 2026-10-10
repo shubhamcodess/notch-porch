@@ -37,13 +37,13 @@ const CSS = `
 /* ── equalizer bars ── */
 .m-eq { display: flex; gap: 2px; align-items: flex-end; height: var(--eq-h); transition: height .42s var(--ease); }
 .m-eq i {
-  width: 3px; height: 100%; border-radius: 2px; background: var(--accent);
+  width: 3px; height: 100%; border-radius: 2px; background: var(--eq-color, var(--accent)); transition: background .8s ease;
   transform-origin: bottom; transform: scaleY(.25);
   animation: eq .85s ease-in-out infinite; animation-play-state: paused;
 }
 .m-eq.on i { animation-play-state: running; }
 /* live: bars follow the real audio instead of the canned animation */
-.m-eq.live i { animation: none; transform: scaleY(var(--lv, .25)); transition: transform .09s linear; filter: brightness(calc(.85 + var(--beat) * .55)); }
+.m-eq.live i { animation: none; transform: scaleY(var(--lv, .25)); transition: transform .09s linear, background .8s ease; filter: brightness(calc(.85 + var(--beat) * .55)); }
 .m-eq i:nth-child(2) { animation-delay: .22s; }
 .m-eq i:nth-child(3) { animation-delay: .46s; }
 .m-eq i:nth-child(4) { animation-delay: .09s; }
@@ -112,6 +112,15 @@ const CSS = `
 .m-recent > b { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: rgba(255,255,255,.42); margin-right: 2px; }
 .m-recent .m-chip { height: 26px; padding: 0 10px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
 .m-hint { font-size: 12px; color: rgba(255,255,255,.4); text-align: center; padding: 14px 0; }
+
+/* ── play button loader ── */
+.m-play { position: relative; }
+.m-play.loading { pointer-events: none; }
+.m-play.loading > svg { opacity: 0; }
+.m-play.loading::after {
+  content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; box-sizing: border-box;
+  border: 2px solid rgba(0,0,0,.16); border-top-color: rgba(0,0,0,.85); animation: spin .75s linear infinite;
+}
 
 /* ── controls ── */
 .m-ctrls { display: flex; align-items: center; justify-content: center; gap: 4px; }
@@ -294,6 +303,17 @@ export default {
     $('.m-meta').onclick = () => { if (!state.title) startSearch(); };
     $('.m-meta').style.cursor = 'pointer';
 
+    // ── loader on the play button while a song is being found and started ──
+    let loadingFrom = null, loadingTimer = null, loadingSince = 0;
+    function setLoading(on) {
+      clearTimeout(loadingTimer);
+      playBtn.classList.toggle('loading', !!on);
+      playBtn.setAttribute('aria-busy', String(!!on));
+      loadingFrom = on ? (state.title || '') : null;
+      loadingSince = Date.now();
+      if (on) loadingTimer = setTimeout(() => setLoading(false), 20000);    // never spin forever
+    }
+
     // ── search + discover ──
     const input = $('.m-input'), results = $('.m-results'), recentEl = $('.m-recent');
     let seq = 0, timer = null, found = [], view = 'discover';      // 'discover' | 'genre' | 'results'
@@ -304,7 +324,7 @@ export default {
       clearTimeout(timer); seq++;
       api.setHeight(null); api.hold(false);
     };
-    const play = (t) => { api.invoke('play', t); endSearch(); };
+    const play = (t) => { setLoading(true); api.invoke('play', t); endSearch(); };
     const rowEl = (r, target) => {
       const b = el('<button class="m-row" role="option"><img alt=""><div class="t"><b></b><span></span></div></button>');
       if (r.art) b.querySelector('img').src = r.art;
@@ -416,13 +436,17 @@ export default {
       }
     };
 
-    playBtn.onclick = () => api.invoke('toggle');
+    playBtn.onclick = async () => {
+      if (!state.title) setLoading(true);            // nothing loaded yet: picking and starting a song takes a few seconds
+      const ok = await api.invoke('toggle');
+      if (!ok) setLoading(false);
+    };
     $('.m-next').onclick = () => api.invoke('next');
     $('.m-prev').onclick = () => api.invoke('prev');
     shufBtn.onclick = async () => {
-      if (!state.title) artistEl.textContent = 'Finding something to shuffle…';
+      if (!state.title) { artistEl.textContent = 'Finding something to shuffle…'; setLoading(true); }
       const r = await api.invoke('shuffle');
-      if (r === 'empty') artistEl.textContent = "Couldn't find anything to shuffle";
+      if (r === 'empty') { artistEl.textContent = "Couldn't find anything to shuffle"; setLoading(false); }
     };
     likeBtn.onclick = () => api.invoke('like');
 
@@ -505,6 +529,7 @@ export default {
     api.on('state', (s) => {
       state = s;
       base = { t: s.t || 0, at: performance.now() };
+      if (loadingFrom !== null && s.playing && s.title && (s.title !== loadingFrom || (Date.now() - loadingSince > 2500 && s.t < 6))) setLoading(false);
       if (!s.playing) api.setCaption(null);
       if (s.playing !== wasPlaying) { wasPlaying = s.playing; lastLine = undefined; }   // re-show the caption on resume
       has = !!s.title;
