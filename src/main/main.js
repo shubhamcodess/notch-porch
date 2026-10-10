@@ -116,6 +116,8 @@ function createShell() {
   shell.setIgnoreMouseEvents(true, { forward: true });    // click-through until the cursor is on the pill
   shell.loadFile(path.join(ROOT, 'src', 'renderer', 'index.html'));
   shell.on('closed', () => { shell = null; });
+  // while a widget holds the card open (typing in search), a click anywhere else takes focus away: let the card close
+  shell.on('blur', () => { if (holdFocus) { holdFocus = false; shell.webContents.send('shell:blur'); } });
   shell.webContents.on('render-process-gone', (_e, d) => console.error('[shell] renderer gone:', d.reason));
 
   const reposition = () => { if (!shell || shell.isDestroyed()) return; detectNotch(); const n = geometry(); shell.setPosition(n.x, n.y); shell.webContents.send('shell:geometry', n.notch); sendMenubar(); };

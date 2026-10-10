@@ -15,13 +15,13 @@ Hover the notch and a card drops down. Move away and it folds back. Starring: a 
 
 - **Lives in the notch.** Collapsed, it shows album art and a live visualizer on either side of the notch. Hover to open the full card, move away to fold it back.
 - **YouTube Music player.** Play/pause, next/previous, shuffle, like, seek. It runs YouTube Music in a hidden window, so your own account, library and playlists just work.
-- **Search inside the notch.** Click the magnifier, type, and play a song without opening any window.
+- **Search and Discover inside the notch.** Click the magnifier: before you type, a Discover page shows live moods and genres from YouTube Music (as coloured chips), quick picks to play, and your own recent searches. Tap a genre to see its playlists, tap one to play the whole list, and use the back arrow to return. Type to search instead. Pressing play with nothing loaded starts a random quick pick (never the same one twice in a row), even when signed out.
 - **Ad blocking.** Network ad/tracker blocking plus an ad-skip script, so music keeps playing.
 - **Live equalizer.** The bars beside the notch follow the actual audio (bass to treble), and the Album colors theme pulses gently with the beat.
 - **Sleep mode.** If nothing has played for 5 minutes, the disc and bars fade away and only a dim music note is left. Hover the notch, or start a song, to wake it.
 - **Makes room for app menus.** When the frontmost app's menus grow long enough to reach the left item, it rolls behind the notch and the strip is yours again (hover is disabled there so you can click the menus). When there's room again, it rolls back out. Needs Accessibility permission (see below); turn it off in the menu with **Make room for app menus**.
 - **Crowded menu bar? It adapts.** If status icons on the right also reach the notch, the equalizer rolls behind it too. With both sides hidden, a thin pulsing line in the cover's color appears under the notch while music plays, and hovering the notch still opens the card. Works with any notch size (Air and Pro).
-- **Synced lyrics.** Tap the lyrics button (top-left of the card) and the artist name becomes the current lyric line, changing in time with the song. When the lyrics library has the same song written in English letters (romanised Tamil, Telugu, Hindi…), that version is preferred over the native-script one. If no reliable match is found, it simply stays the artist name. In the menu-bar menu, **Music → Show lyrics under the notch** also shows each line as a small caption under the notch while the card is closed. Lyrics come from [LRCLIB](https://lrclib.net) and are cached locally, never bundled.
+- **Synced lyrics.** Tap the lyrics button (top-left of the card) and the artist name becomes the current lyric line, changing in time with the song. When the lyrics library has the same song written in English letters (romanised Tamil, Telugu, Hindi…), that version is preferred over the native-script one. If no reliable match is found, it simply stays the artist name. The lyrics button is the master switch. With **Music → Also show lyrics under the notch** ticked in the menu-bar menu, each line also appears as a small caption under the notch while the card is closed (and only while the lyrics button is on). Lyrics come from [LRCLIB](https://lrclib.net) and are cached locally, never bundled.
 - **Themes.** Dark, Liquid glass, and **Album colors**, a slowly drifting gradient taken from the current cover art. Every theme fades to pure black at the top so the card merges with the hardware notch.
 - **Resource leaf.** A green leaf in the menu says everything is normal. It turns yellow and tells you when the app is using significant CPU or memory, or draining the battery.
 - **Quits cleanly.** Quitting Notch Porch also closes the hidden music player. Nothing keeps playing in the background.
@@ -72,9 +72,8 @@ Needs Node 20+ and the Xcode command line tools (`xcode-select --install`), whic
 ## First run
 
 1. A small pill-and-bars icon appears in the menu bar, and a small pill sits beside the notch. There's no Dock icon.
-2. Hover the notch to open the card, then click **Click to open YouTube Music**. (Or use **Menu-bar icon → Music → Open YouTube Music window**.)
-3. Sign in to your Google account and play anything. Close the window; it just hides.
-4. Your login is remembered. From now on the notch shows what's playing.
+2. Hover the notch to open the card. Press **play** to start a random pick right away, or tap the **magnifier** to open Discover (moods, genres, quick picks) and search. No account needed.
+3. Optional: to get your own library and recommendations, open **Menu-bar icon → Music → Open YouTube Music window**, sign in to your Google account, and close the window (it just hides). Your login is remembered.
 
 ### If Google refuses the sign-in
 
@@ -96,7 +95,7 @@ On first launch macOS asks to let Notch Porch control your computer using access
 |---|---|
 | Hover the notch | Open the card |
 | Move the cursor away | Fold it back |
-| Click the magnifier (or double-click the title) | Search for a song. Enter plays the first result, Esc goes back |
+| Click the magnifier (or double-click the title) | Open Discover and search. Enter plays the first result; back arrow or Esc goes up one level |
 | Click shuffle | Shuffle the current queue. With nothing playing, it starts a shuffled mix from your recently played songs (signed in) or YouTube Music's home picks (signed out) |
 | Two-finger swipe sideways | Switch widgets (when you have more than one) |
 | Menu-bar icon | Theme, Launch at login, resource status, YouTube Music window, Reload, Quit |
@@ -109,8 +108,10 @@ Settings live in `~/Library/Application Support/notch-porch/settings.json`:
 | `accent` | `#ff375f` | Accent colour for the visualizer and active buttons |
 | `notchWidth` | `200` | Fallback notch width in px; the real size is detected automatically |
 | `adblock` | `true` | Turn the ad blocker off |
-| `lyrics` | `false` | Show the current lyric line in the card (also the button in the card) |
-| `lyricsSubtitle` | `false` | Show lyrics as a caption under the notch while the card is closed |
+| `recentSearches` | `[]` | Your last searches shown in Discover (edit or clear it here) |
+| `genreTaps` | `{}` | How often you opened each genre; your most-used show first in Discover |
+| `lyrics` | `false` | Master switch for lyrics (the button in the card) |
+| `lyricsSubtitle` | `false` | Also show lyrics as a caption under the notch while the card is closed (needs `lyrics` on) |
 | `menuAvoid` | `true` | Roll the left item behind the notch when app menus reach it |
 | `sleepMinutes` | `5` | Minutes paused before sleep mode (`0` = never). Also in the menu: Music → Sleep after pause |
 

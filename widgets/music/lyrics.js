@@ -83,7 +83,7 @@ function pick(results, meta) {
 
 async function getLyrics(meta, cacheDir) {
   if (!meta || !meta.title) return null;
-  const key = crypto.createHash('sha1').update(`v5|${fold(meta.title)}|${fold(meta.artist)}|${Math.round((meta.duration || 0) / 4)}`).digest('hex');
+  const key = crypto.createHash('sha1').update(`v6|${fold(meta.title)}|${fold(meta.artist)}|${Math.round((meta.duration || 0) / 4)}`).digest('hex');
   const file = cacheDir && path.join(cacheDir, 'lyrics', `${key}.json`);
   try {
     const c = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -92,14 +92,18 @@ async function getLyrics(meta, cacheDir) {
   } catch { /* not cached */ }
 
   const title = cleanTitle(meta.title), artist = firstArtist(meta.artist);
-  const queries = [...new Set([`${title} ${artist}`, title, `${meta.title} ${meta.artist}`].map((q) => q.trim()).filter(Boolean))];
+  const versions = [...versionOf(meta.title)].join(' ');          // e.g. "remix": the cleaned title drops it, but searching with it finds the right entries
+  const queries = [...new Set([`${title} ${artist}`, versions && `${title} ${versions}`, title, `${meta.title} ${meta.artist}`].map((q) => (q || '').trim()).filter(Boolean))];
+  // gather candidates from every query, then choose the best overall (not just the first query that matches)
+  const pool = new Map();
   let found = null, reachable = false;
   for (const q of queries) {
     const results = await search(q);
     if (results === null) continue;
     reachable = true;
-    found = pick(results, meta);
-    if (found) break;
+    for (const r of results) if (!pool.has(r.id)) pool.set(r.id, r);
+    found = pick([...pool.values()], meta);
+    if (found && latinShare(found.syncedLyrics) > 0.8) break;      // good enough: an English-letter match
   }
   const lines = found ? parseLrc(found.syncedLyrics) : null;
   if (reachable && file) {

@@ -96,6 +96,21 @@ const CSS = `
 .m-row .t { min-width: 0; display: flex; flex-direction: column; }
 .m-row b { font-size: 13px; font-weight: 600; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .m-row span { font-size: 11px; color: rgba(255,255,255,.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-sec { flex-shrink: 0; margin: 8px 4px 5px; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: rgba(255,255,255,.42); }
+.m-sec:first-child { margin-top: 2px; }
+.m-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px; flex-shrink: 0; }
+.m-chip {
+  display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 10px;
+  background: rgba(255,255,255,.055); color: rgba(255,255,255,.88); font: 500 12.5px var(--sans); letter-spacing: -.1px; cursor: pointer;
+  transition: background .15s, color .15s, transform .12s;
+}
+.m-chip:hover, .m-chip:focus-visible { background: rgba(255,255,255,.11); color: #fff; outline: none; }
+.m-chip:active { transform: scale(.97); }
+.m-chip.more { color: rgba(255,255,255,.5); background: transparent; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.16); }
+.m-recent { display: none; align-items: center; gap: 6px; flex-shrink: 0; padding-top: 6px; border-top: .5px solid rgba(255,255,255,.1); overflow: hidden; }
+.m-recent.show { display: flex; }
+.m-recent > b { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: rgba(255,255,255,.42); margin-right: 2px; }
+.m-recent .m-chip { height: 26px; padding: 0 10px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
 .m-hint { font-size: 12px; color: rgba(255,255,255,.4); text-align: center; padding: 14px 0; }
 
 /* ── controls ── */
@@ -181,7 +196,7 @@ export default {
       <button class="ctl ghost m-open-search" aria-label="Search songs" title="Search">${ICONS.search}</button>
       <div class="m-meta">
         <div class="m-title">Nothing playing</div>
-        <div class="m-artist"><span class="cur">Click to open YouTube Music</span></div>
+        <div class="m-artist"><span class="cur">Press play, or tap search to discover music</span></div>
       </div>
 
       <div class="m-scrub">
@@ -205,9 +220,10 @@ export default {
       <div class="m-find">
         <div class="m-find-bar">
           <button class="ctl ghost m-back" aria-label="Back" title="Back">${ICONS.back}</button>
-          <input class="m-input" placeholder="Search songs" autocomplete="off" spellcheck="false" aria-label="Search YouTube Music">
+          <input class="m-input" placeholder="Search YouTube Music" autocomplete="off" spellcheck="false" aria-label="Search YouTube Music">
         </div>
         <div class="m-results" role="listbox"></div>
+        <div class="m-recent"><b>Recent</b></div>
       </div>`;
 
     const $ = (s) => page.querySelector(s);
@@ -222,7 +238,7 @@ export default {
     const likeBtn = $('.m-like');
     let state = { d: 0, t: 0 };
     let artUrl = '';
-    let has = false, asleep = false, cardOpen = false, lastActive = Date.now();
+    let has = false, asleep = false, cardOpen = false, lastActive = Date.now(), leaveTimer = null;
 
     // ── sleep mode: paused for a while → dim note only, until hover or playback wakes it ──
     const paintIdle = () => {
@@ -233,7 +249,19 @@ export default {
       note.classList.toggle('faded', asleep);
     };
     const touch = () => { lastActive = Date.now(); if (asleep) { asleep = false; paintIdle(); } };
-    api.onOpen((open) => { cardOpen = open; touch(); });
+    api.onOpen((open) => {
+      cardOpen = open; touch();
+      const searching = page.classList.contains('searching');
+      if (!open && searching) {
+        // the card is folding back: release focus now, but keep the search view on screen until it has gone,
+        // otherwise the player controls flash in while the card is still fading out
+        api.hold(false);
+        clearTimeout(leaveTimer);
+        leaveTimer = setTimeout(() => { leaveTimer = null; endSearch(); }, 560);
+      } else if (open && leaveTimer) {                  // came back before it finished: show the player again
+        clearTimeout(leaveTimer); leaveTimer = null; endSearch();
+      }
+    });
     setInterval(() => {
       const mins = api.settings.sleepMinutes ?? 5;
       if (!mins || asleep || !has || state.playing || cardOpen) return;
@@ -263,55 +291,129 @@ export default {
     });
     setInterval(() => { if (eq.classList.contains('live') && Date.now() - lastLevels > 1500) stopLive(); }, 500);
 
-    $('.m-meta').onclick = () => { if (!state.title) api.invoke('openPlayer'); };
+    $('.m-meta').onclick = () => { if (!state.title) startSearch(); };
     $('.m-meta').style.cursor = 'pointer';
 
-    // ── search ──
-    const input = $('.m-input'), results = $('.m-results');
-    let seq = 0, timer = null, found = [];
+    // ── search + discover ──
+    const input = $('.m-input'), results = $('.m-results'), recentEl = $('.m-recent');
+    let seq = 0, timer = null, found = [], view = 'discover';      // 'discover' | 'genre' | 'results'
     const hint = (t) => { results.innerHTML = ''; results.append(Object.assign(document.createElement('div'), { className: 'm-hint', textContent: t })); };
+    const sec = (t) => Object.assign(document.createElement('div'), { className: 'm-sec', textContent: t });
     const endSearch = () => {
       page.classList.remove('searching');
       clearTimeout(timer); seq++;
       api.setHeight(null); api.hold(false);
     };
-    const startSearch = () => {
-      page.classList.add('searching');
-      input.value = ''; found = []; hint('Type to search YouTube Music');
-      api.setHeight(268); api.hold(true);
-      setTimeout(() => input.focus(), 120);
+    const play = (t) => { api.invoke('play', t); endSearch(); };
+    const rowEl = (r, target) => {
+      const b = el('<button class="m-row" role="option"><img alt=""><div class="t"><b></b><span></span></div></button>');
+      if (r.art) b.querySelector('img').src = r.art;
+      b.querySelector('b').textContent = r.title;
+      b.querySelector('span').textContent = r.artist ?? r.subtitle ?? '';
+      b.onclick = () => play(target);
+      return b;
     };
-    const play = (id) => { api.invoke('play', id); endSearch(); };
+    const chipEl = (label, onClick, cls = '') => {
+      const c = Object.assign(document.createElement('button'), { className: `m-chip ${cls}`.trim(), textContent: label });
+      c.onclick = onClick;
+      return c;
+    };
+
+    // your own recent searches (kept locally in settings.json), pinned under the list
+    const recents = () => (Array.isArray(api.settings.recentSearches) ? api.settings.recentSearches : []);
+    const paintRecents = () => {
+      const list = recents().slice(0, 4);
+      recentEl.replaceChildren(recentEl.querySelector('b'), ...list.map((q) => chipEl(q, () => { input.value = q; runSearch(q); })));
+      recentEl.classList.toggle('show', view === 'discover' && list.length > 0);
+    };
+    const remember = (q) => api.setSetting('recentSearches', [q, ...recents().filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 8));
+
+    // discover: live moods/genres + quick picks straight from YouTube Music
+    async function showDiscover() {
+      view = 'discover'; seq++; paintRecents();
+      hint('Loading…');
+      const d = await api.invoke('discover');
+      if (view !== 'discover') return;
+      if (!d || !d.sections.length) return hint("Couldn't reach YouTube Music. Type to search.");
+      const taps = api.settings.genreTaps || {};
+      const nodes = [];
+      d.sections.forEach((sc, i) => {
+        nodes.push(sec(sc.title || 'Browse'));
+        const box = Object.assign(document.createElement('div'), { className: 'm-chips' });
+        // moods stay whole; long genre lists show your most-used first, then YouTube's order, behind a "more" chip
+        const all = i === 0 ? sc.chips : [...sc.chips].map((c, k) => [c, k]).sort((x, y) => (taps[y[0].label] || 0) - (taps[x[0].label] || 0) || x[1] - y[1]).map((x) => x[0]);
+        const LIMIT = 8;
+        const fill = (full) => {
+          const list = i === 0 || full ? all : all.slice(0, LIMIT);
+          box.replaceChildren(...list.map((c) => chipEl(c.label, () => showGenre(c))));
+          if (!full && i !== 0 && all.length > LIMIT) box.append(chipEl(`+${all.length - LIMIT} more`, () => fill(true), 'more'));
+        };
+        fill(false);
+        nodes.push(box);
+        if (i === 0 && d.picks.items.length) {
+          nodes.push(sec(d.picks.title));
+          nodes.push(...d.picks.items.slice(0, 4).map((r) => rowEl(r, r)));
+        }
+      });
+      results.replaceChildren(...nodes);
+      results.scrollTop = 0;
+    }
+    async function showGenre(c) {
+      view = 'genre'; seq++; paintRecents();
+      api.setSetting('genreTaps', { ...(api.settings.genreTaps || {}), [c.label]: ((api.settings.genreTaps || {})[c.label] || 0) + 1 });
+      results.replaceChildren(sec(c.label), Object.assign(document.createElement('div'), { className: 'm-hint', textContent: 'Loading…' }));
+      const g = await api.invoke('genre', { browseId: c.browseId, params: c.params });
+      if (view !== 'genre') return;
+      if (!g || !g.groups.length) return results.replaceChildren(sec(c.label), Object.assign(document.createElement('div'), { className: 'm-hint', textContent: 'Nothing here right now' }));
+      const nodes = [sec(c.label)];
+      for (const grp of g.groups) { if (grp.title) nodes.push(sec(grp.title)); nodes.push(...grp.items.map((r) => rowEl(r, r))); }
+      results.replaceChildren(...nodes);
+      results.scrollTop = 0;
+    }
+
     const render = (list) => {
       found = list || [];
       if (!list) return hint("Couldn't reach YouTube Music");
       if (!list.length) return hint('No results');
-      results.replaceChildren(...list.map((r) => {
-        const b = el('<button class="m-row" role="option"><img alt=""><div class="t"><b></b><span></span></div></button>');
-        if (r.art) b.querySelector('img').src = r.art;
-        b.querySelector('b').textContent = r.title;
-        b.querySelector('span').textContent = r.artist;
-        b.onclick = () => play(r.id);
-        return b;
-      }));
+      results.replaceChildren(...list.map((r) => rowEl(r, { id: r.id })));
+    };
+    async function runSearch(q) {
+      clearTimeout(timer);
+      view = 'results'; paintRecents();
+      const mine = ++seq;
+      hint('Searching…');
+      const list = await api.invoke('search', q);
+      if (mine === seq) render(list);
+    }
+    const startSearch = () => {
+      page.classList.add('searching');
+      input.value = ''; found = [];
+      api.setHeight(268); api.hold(true);
+      showDiscover();
+      setTimeout(() => input.focus(), 120);
+    };
+    // one step up: genre list → discover → player
+    const back = () => {
+      if (view === 'genre') { showDiscover(); return; }
+      if (input.value) { input.value = ''; showDiscover(); return; }
+      endSearch();
     };
     $('.m-open-search').onclick = startSearch;
-    $('.m-back').onclick = endSearch;
+    $('.m-back').onclick = back;
     $('.m-meta').addEventListener('dblclick', startSearch);
     input.oninput = () => {
       clearTimeout(timer);
       const q = input.value.trim();
-      if (!q) { seq++; return hint('Type to search YouTube Music'); }
-      timer = setTimeout(async () => {
-        const mine = ++seq;
-        hint('Searching…');
-        const list = await api.invoke('search', q);
-        if (mine === seq) render(list);
-      }, 280);
+      if (!q) { showDiscover(); return; }
+      timer = setTimeout(() => runSearch(q), 280);
     };
     input.onkeydown = (e) => {
-      if (e.key === 'Escape') endSearch();
-      if (e.key === 'Enter' && found[0]) play(found[0].id);
+      if (e.key === 'Escape') back();
+      if (e.key === 'Enter' && input.value.trim()) {
+        const q = input.value.trim();
+        remember(q);
+        if (found[0] && view === 'results') play({ id: found[0].id }); else runSearch(q);
+      }
     };
 
     playBtn.onclick = () => api.invoke('toggle');
@@ -349,7 +451,7 @@ export default {
     }
 
     // ── lyrics: one synced line in place of the artist name (card) and/or a caption under the notch ──
-    let artistDefault = 'Click to open YouTube Music';
+    let artistDefault = 'Press play, or tap search to discover music';
     let lyr = { key: '', lines: null };
     let base = { t: 0, at: performance.now() };      // playback clock sampled when state arrives
     let lastLine = null, lastCard = null, wasPlaying = false;
@@ -385,7 +487,8 @@ export default {
       if (lyr.key === key) lyr.lines = res && res.lines ? res.lines : null;
     }
     setInterval(() => {
-      const card = !!api.settings.lyrics, cap = !!api.settings.lyricsSubtitle;
+      // the card button is the master switch; "under the notch" is only a preference for where else to show them
+      const card = !!api.settings.lyrics, cap = card && !!api.settings.lyricsSubtitle;
       lyrBtn.classList.toggle('on', card);
       lyrBtn.setAttribute('aria-pressed', String(card));
       if (card !== lastCard) { lastCard = card; paintArtist(); }
@@ -408,7 +511,7 @@ export default {
       if (s.playing) touch();
       if (!s.playing && eq.classList.contains('live')) stopLive();
       titleEl.textContent = has ? s.title : 'Nothing playing';
-      artistDefault = has ? [s.artist, s.album].filter(Boolean).join(' · ') : 'Click to open YouTube Music';
+      artistDefault = has ? [s.artist, s.album].filter(Boolean).join(' · ') : 'Press play, or tap search to discover music';
       paintArtist();
 
       paintIdle();

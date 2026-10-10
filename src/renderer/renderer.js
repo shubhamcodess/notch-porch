@@ -52,6 +52,8 @@ applyGeometry(cfg.notch);
 window.notch.on('shell:settings', applySettings);
 window.notch.on('shell:geometry', applyGeometry);
 window.notch.on('shell:menubar', applyMenubar);
+// focus left the card while a widget was holding it open (the user clicked elsewhere): release and fold back
+window.notch.on('shell:blur', () => { holdOpen = false; setOpen(false); });
 
 // ---------- caption under the notch ----------
 const capEl = document.querySelector('.lyric-caption'), capText = capEl.querySelector('.cap-text');
@@ -205,7 +207,6 @@ let interactive = false;
 let closeTimer = null;
 
 function setOpen(open) {
-  if (!open && holdOpen) return;
   clearTimeout(closeTimer);
   const was = pill.classList.contains('open');
   pill.classList.toggle('open', open);
@@ -220,6 +221,8 @@ function inside(e) {
   const right = tuckR && shut ? r.right - sideW() : r.right;
   return e.clientX >= left && e.clientX <= right && e.clientY >= r.top && e.clientY <= r.bottom;
 }
+// leaving the pill folds it back like always; while a widget holds it (typing in search) allow a little more slack
+const closeDelay = () => (holdOpen ? 650 : 280);
 document.addEventListener('mousemove', (e) => {
   const hit = inside(e);
   if (hit !== interactive) {
@@ -228,11 +231,11 @@ document.addEventListener('mousemove', (e) => {
   }
   if (hit) setOpen(true);
   else if (pill.classList.contains('open') && !closeTimer) {
-    closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, 280);
+    closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, closeDelay());
   }
 });
 document.addEventListener('mouseleave', () => {
   interactive = false;
   window.notch.setInteractive(false);
-  closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, 280);
+  closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, closeDelay());
 });

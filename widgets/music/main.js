@@ -29,6 +29,7 @@ const AD_SKIP = `
 })();`;
 
 const { getLyrics } = require('./lyrics');
+const { getDiscover, getGenre } = require('./discover');
 const AUDIO = fs.readFileSync(path.join(__dirname, 'audio-probe.js'), 'utf8');
 
 const STATE = `
@@ -190,9 +191,20 @@ exports.setup = async (ctx) => {
     if (key !== last) { last = key; ctx.send('state', s); }
   }, 1000);
 
-  ctx.handle('toggle', () => run(`(() => { const v = document.querySelector('video');
-    if (v && v.src) { v.paused ? v.play() : v.pause(); return true; }
-    const b = document.querySelector('ytmusic-player-bar #play-pause-button'); b && b.click(); return !!b; })()`));
+  ctx.handle('toggle', async () => {
+    const hasTrack = await run(`!!(navigator.mediaSession && navigator.mediaSession.metadata && navigator.mediaSession.metadata.title)`);
+    if (!hasTrack) {                                   // nothing loaded: start a random quick pick from home
+      const d = await getDiscover(ses, gl()).catch(() => null);
+      const items = (d && d.picks.items) || [];
+      // a random pick, never the one we started last time
+      const pool = items.filter((i) => i.id && i.id !== ctx.settings.lastStartedId);
+      const pick = pool[Math.floor(Math.random() * pool.length)] || items[0];
+      if (pick) { ctx.setSetting('lastStartedId', pick.id || null); return playTarget(pick); }
+    }
+    return run(`(() => { const v = document.querySelector('video');
+      if (v && v.src) { v.paused ? v.play() : v.pause(); return true; }
+      const b = document.querySelector('ytmusic-player-bar #play-pause-button'); b && b.click(); return !!b; })()`);
+  });
   ctx.handle('next', () => run(click('ytmusic-player-bar .next-button')));
   ctx.handle('prev', () => run(click('ytmusic-player-bar .previous-button')));
   // Shuffle: toggle on the current queue; with nothing queued, start a shuffled mix from
@@ -230,12 +242,20 @@ exports.setup = async (ctx) => {
   ctx.handle('seek', (sec) => run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${Number(sec) || 0}; })()`));
   ctx.handle('lyrics', (meta) => getLyrics(meta, ctx.userData));
   ctx.handle('search', (q) => searchSongs(ses, String(q || '').trim().slice(0, 120)));
-  ctx.handle('play', (id) => {
-    if (!/^[\w-]{6,20}$/.test(String(id))) return false;
+  // play a song (its auto-mix follows) or a whole playlist: { id } | { id, list } | { list } (a bare string is a song id)
+  const playTarget = (t) => {
+    const x = typeof t === 'string' ? { id: t } : t || {};
+    const ok = (v) => typeof v === 'string' && /^[\w-]{6,64}$/.test(v);
+    if (!ok(x.id) && !ok(x.list)) return false;
+    const q = ok(x.id) ? `v=${x.id}&list=${ok(x.list) ? x.list : `RDAMVM${x.id}`}` : `list=${x.list}`;
     autoplay = true;
-    player.loadURL(`${HOME}watch?v=${id}`);
+    player.loadURL(`${HOME}watch?${q}`);
     return true;
-  });
+  };
+  ctx.handle('play', (t) => playTarget(t));
+  const gl = () => require('electron').app.getLocaleCountryCode() || 'US';
+  ctx.handle('discover', () => getDiscover(ses, gl()).catch((e) => { console.warn('[music] discover failed:', e.message); return null; }));
+  ctx.handle('genre', (g) => getGenre(ses, g?.browseId, g?.params, gl()).catch((e) => { console.warn('[music] genre failed:', e.message); return null; }));
   ctx.handle('openPlayer', () => showPlayer());
   ctx.handle('reloadCookies', async () => { const n = await importCookies(ses, ctx.userData); player.reload(); return n; });
 
@@ -243,7 +263,7 @@ exports.setup = async (ctx) => {
   ctx.menu(() => [
     { label: 'Open YouTube Music window', click: showPlayer },
     { type: 'separator' },
-    { label: 'Show lyrics under the notch', type: 'checkbox', checked: !!ctx.settings.lyricsSubtitle, click: (item) => ctx.setSetting('lyricsSubtitle', item.checked) },
+    { label: 'Also show lyrics under the notch', type: 'checkbox', checked: !!ctx.settings.lyricsSubtitle, click: (item) => ctx.setSetting('lyricsSubtitle', item.checked) },
     {
       label: 'Sleep after pause', submenu: SLEEP_CHOICES.map((m) => ({
         label: m ? `${m} minute${m > 1 ? 's' : ''}` : 'Never', type: 'radio', checked: (ctx.settings.sleepMinutes ?? 5) === m,
