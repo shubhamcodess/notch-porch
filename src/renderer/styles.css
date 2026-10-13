@@ -153,6 +153,9 @@ body.theme-art { --eq-color: color-mix(in srgb, color-mix(in srgb, var(--art-viv
 .pill.tuck-left .slot.left > .slot { transform: translateX(calc(var(--side) - 8px)) rotate(300deg); }
 .pill.tuck-right .slot.right > .slot { transform: translateX(calc((var(--side) - 8px) * -1)) rotate(-300deg); }
 
+/* while the card is open it covers that strip of the menu bar, so the items come back out and fold away again on close */
+.pill.open .slot.left > .slot, .pill.open .slot.right > .slot { transform: none; }
+
 /* both sides tucked + music playing: a hairline right under the notch, tinted from the cover */
 .pulse-line {
   position: absolute; top: var(--notch-h); left: 50%; pointer-events: none;

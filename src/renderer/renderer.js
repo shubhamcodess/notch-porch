@@ -15,10 +15,16 @@ let tuckL = false, tuckR = false;   // side items folded behind the notch to lea
 let playingNow = false;
 let lastMenu = { gap: null, gapR: null };
 const sideW = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--side')) || 70;
-const decide = (cur, gap) => {
+// room an item needs: its distance from the notch, its own width, and a little air
+const needFor = (sel) => {
+  const el = document.querySelector(sel);
+  const edge = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-gap')) || 10;
+  return edge + Math.max(el ? el.offsetWidth : 0, 22) + 8;
+};
+const decide = (cur, gap, need) => {
   if (settings.menuAvoid === false || !hasNotch || gap == null) return false;
-  if (gap < sideW() + 8) return true;              // crowded: tuck the item away
-  if (gap > sideW() + 28) return false;            // room again (hysteresis avoids flapping)
+  if (gap < need) return true;                     // it no longer fits: tuck it away
+  if (gap > need + 14) return false;               // room again (hysteresis avoids flapping)
   return cur;
 };
 function updateLine() {
@@ -27,7 +33,7 @@ function updateLine() {
 }
 function applyMenubar(m) {
   lastMenu = m;
-  const l = decide(tuckL, m.gap), r = decide(tuckR, m.gapR);
+  const l = decide(tuckL, m.gap, needFor('.slot.left > .slot')), r = decide(tuckR, m.gapR, needFor('.slot.right > .slot'));
   if (l !== tuckL) { tuckL = l; pill.classList.toggle('tuck-left', l); }
   if (r !== tuckR) { tuckR = r; pill.classList.toggle('tuck-right', r); }
   updateLine();

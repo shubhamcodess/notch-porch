@@ -41,12 +41,18 @@ static double menuRight(pid_t pid) {
 static double statusLeft(void) {
   NSScreen *scr = NSScreen.screens.firstObject;
   double cx = scr.frame.size.width / 2, best = -1;
+  double notchW = 0;
+  if (@available(macOS 12.0, *)) {
+    NSRect l = scr.auxiliaryTopLeftArea, r = scr.auxiliaryTopRightArea;
+    if (l.size.width > 0 && r.size.width > 0) notchW = scr.frame.size.width - l.size.width - r.size.width;
+  }
+  double minX = cx + notchW / 2 - 1;   // anything inside the notch span is hidden behind it, so it isn't crowding anything
   NSArray *list = (__bridge_transfer NSArray *)CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
   for (NSDictionary *w in list) {
     if ([w[(id)kCGWindowLayer] intValue] != 25) continue;            // status-item windows
     CGRect b;
     if (!CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)w[(id)kCGWindowBounds], &b)) continue;
-    if (b.origin.y > 4 || b.size.height > 60 || b.origin.x < cx || b.origin.x > scr.frame.size.width) continue;
+    if (b.origin.y > 4 || b.size.height > 60 || b.origin.x < minX || b.origin.x > scr.frame.size.width) continue;
     if (best < 0 || b.origin.x < best) best = b.origin.x;
   }
   return best;
