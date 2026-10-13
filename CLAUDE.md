@@ -18,7 +18,8 @@ src/main/preload.js   contextBridge `window.notch` — only "shell:*" and "w:<id
 src/renderer/         index.html, styles.css (tokens, themes dark/glass/art), renderer.js (hover, pages, click-through)
 widgets/<id>/         manifest.json { name, order, renderer, main?, enabled? }, widget.js, optional main.js
 widgets/_example/     starter widget (clock); folders starting with "_" are ignored
-assets/               tray leaf icons    build/  app icon (.icns)    scripts/  install.sh, adhoc-sign.js
+assets/               tray leaf icons    build/  app icon (.icns)    scripts/  install.sh, adhoc-sign.js, make-banner.py
+docs/                 README art (banner.gif, demo.gif) + HOW_IT_WORKS, DESIGN_SYSTEM, WIDGETS, CONFIGURATION, TROUBLESHOOTING (keep in sync with code changes)
 ```
 User data: `~/Library/Application Support/notch-porch/` (settings.json, `persist:ytmusic` session, optional cookies.json). Migrated once from the old `notch-dock` folder.
 

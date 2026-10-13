@@ -1,161 +1,179 @@
-<div align="center">
+<p align="center">
+  <img src="docs/banner.gif" alt="Notch Porch: a widget dock that lives in your MacBook's notch" width="100%">
+</p>
 
-<img src="build/icon-256.png" width="112" alt="Notch Porch icon">
+<p align="center">
+  <a href="https://github.com/shubhamcodess/notch-porch/releases/latest"><img src="https://img.shields.io/badge/Download-for%20Mac-0A84FF?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac"></a>
+  &nbsp;
+  <a href="#install"><img src="https://img.shields.io/badge/Install-in%2030%20seconds-1D1D1F?style=for-the-badge" alt="Install in 30 seconds"></a>
+</p>
 
-# Notch Porch
+<p align="center">
+  <img src="docs/demo.gif" alt="Notch Porch in action: Discover, search, playing a song, lyrics under the notch" width="720">
+</p>
 
-**A widget dock that lives in your MacBook's notch.**
-Hover the notch and a card drops down. Move away and it folds back. Starring: a YouTube Music player with ad blocking.
+<p align="center">
+  <a href="https://github.com/shubhamcodess/notch-porch/releases/latest"><img src="https://img.shields.io/github/v/release/shubhamcodess/notch-porch?style=flat-square&color=0A84FF&label=release" alt="Latest release"></a>
+  <a href="https://github.com/shubhamcodess/notch-porch/releases"><img src="https://img.shields.io/github/downloads/shubhamcodess/notch-porch/total?style=flat-square&color=34C759&label=downloads" alt="Downloads"></a>
+  <a href="https://github.com/shubhamcodess/notch-porch/stargazers"><img src="https://img.shields.io/github/stars/shubhamcodess/notch-porch?style=flat-square&color=FFCC00" alt="Stars"></a>
+  <a href="https://github.com/shubhamcodess/notch-porch/commits/main"><img src="https://img.shields.io/github/last-commit/shubhamcodess/notch-porch?style=flat-square&color=8E8E93&label=last%20commit" alt="Last commit"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8E8E93?style=flat-square" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/macOS-12%2B-1D1D1F?style=flat-square&logo=apple" alt="macOS 12 or later">
+  <img src="https://img.shields.io/badge/Apple%20Silicon-ready-1D1D1F?style=flat-square" alt="Apple Silicon">
+</p>
 
-![Notch Porch demo](docs/demo.gif)
+<br>
 
-</div>
+## What it is
 
-## Features
+The notch is dead space. **Notch Porch** turns it into a small, quiet dock for the things you want a glance away.
 
-- **Lives in the notch.** Collapsed, it shows album art and a live visualizer on either side of the notch. Hover to open the full card, move away to fold it back.
-- **YouTube Music player.** Play/pause, next/previous, shuffle, like, seek. It runs YouTube Music in a hidden window, so your own account, library and playlists just work.
-- **Search and Discover inside the notch.** Click the magnifier: before you type, a Discover page shows live moods and genres from YouTube Music (as coloured chips), quick picks to play, and your own recent searches. Tap a genre to see its playlists, tap one to play the whole list, and use the back arrow to return. Type to search instead. Pressing play with nothing loaded starts a random quick pick (never the same one twice in a row), even when signed out.
-- **Ad blocking.** Network ad/tracker blocking plus an ad-skip script, so music keeps playing.
-- **Live equalizer.** The bars beside the notch follow the actual audio (bass to treble), and the Album colors theme pulses gently with the beat.
-- **Sleep mode.** If nothing has played for 5 minutes, the disc and bars fade away and only a dim music note is left. Hover the notch, or start a song, to wake it.
-- **Makes room for app menus.** When the frontmost app's menus grow long enough to reach the left item, it rolls behind the notch and the strip is yours again (hover is disabled there so you can click the menus). When there's room again, it rolls back out. Needs Accessibility permission (see below); turn it off in the menu with **Make room for app menus**.
-- **Crowded menu bar? It adapts.** If status icons on the right also reach the notch, the equalizer rolls behind it too. With both sides hidden, a thin pulsing line in the cover's color appears under the notch while music plays, and hovering the notch still opens the card. Works with any notch size (Air and Pro).
-- **Synced lyrics.** Tap the lyrics button (top-left of the card) and the artist name becomes the current lyric line, changing in time with the song. When the lyrics library has the same song written in English letters (romanised Tamil, Telugu, Hindi…), that version is preferred over the native-script one. If no reliable match is found, it simply stays the artist name. The lyrics button is the master switch. With **Music → Also show lyrics under the notch** ticked in the menu-bar menu, each line also appears as a small caption under the notch while the card is closed (and only while the lyrics button is on). Lyrics come from [LRCLIB](https://lrclib.net) and are cached locally, never bundled.
-- **Themes.** Dark, Liquid glass, and **Album colors**, a slowly drifting gradient taken from the current cover art. Every theme fades to pure black at the top so the card merges with the hardware notch.
-- **Resource leaf.** A green leaf in the menu says everything is normal. It turns yellow and tells you when the app is using significant CPU or memory, or draining the battery.
-- **Quits cleanly.** Quitting Notch Porch also closes the hidden music player. Nothing keeps playing in the background.
-- **Widgets are plug-ins.** Add a folder under `widgets/` and it becomes a new page. See [Writing a widget](#writing-a-widget).
+Hover the notch and a card drops down. Move away and it folds back. Every widget gets its own page in the card and its own spot beside the notch. The first one is a full YouTube Music player. More are on the way, and you can [write your own](docs/WIDGETS.md) in a single folder.
 
-## Requirements
+<br>
 
-- A Mac with Apple Silicon (every MacBook with a notch is one). Tested on macOS 15.
-- A YouTube Music account (free works).
-- It also runs on Macs without a notch. The card then hangs from the top centre of the screen.
+## What you get
+
+### The dock
+
+<table>
+  <tr>
+    <td width="25%" valign="top"><b>Lives in the notch</b><br>Small live items sit beside the notch. Hover to open the full card, move away to fold it back.</td>
+    <td width="25%" valign="top"><b>Gets out of the way</b><br>When an app's menus or your status icons crowd the notch, the items roll behind it. Your menu bar stays yours.</td>
+    <td width="25%" valign="top"><b>Quiet by design</b><br>It sleeps when idle, blocks ads, and a small leaf tells you if it ever uses too much battery or memory.</td>
+    <td width="25%" valign="top"><b>Built to grow</b><br>A widget is just a folder. Drop one in and it gets its own page, its own menu and its own spot by the notch.</td>
+  </tr>
+</table>
+
+### The Music widget
+
+<table>
+  <tr>
+    <td width="33%" valign="top"><b>Discover</b><br>Live moods and genres straight from YouTube Music, plus quick picks. Tap a genre, tap a playlist, and the whole list plays.</td>
+    <td width="33%" valign="top"><b>Search without a window</b><br>Type, play. Your recent searches wait underneath, and it closes the moment you move away.</td>
+    <td width="33%" valign="top"><b>One tap to music</b><br>Press play and a pick starts, signed in or not. Shuffle works on whatever is playing, including a genre playlist.</td>
+  </tr>
+  <tr>
+    <td valign="top"><b>Synced lyrics</b><br>One line, in time with the song, in English letters when they exist. Optionally as a soft caption just under the notch.</td>
+    <td valign="top"><b>Album colors</b><br>The card takes its gradient from the cover art and drifts slowly. The equalizer picks up a matching tone.</td>
+    <td valign="top"><b>A real equalizer</b><br>The bars follow the actual audio, bass to treble, and the glow pulses on the beat. No canned animation.</td>
+  </tr>
+</table>
+
+<br>
 
 ## Install
 
-### Option 1: one line
+> [!TIP]
+> Notch Porch is for **MacBooks with a notch** (any Apple Silicon Mac, macOS 12 or later). It also runs on Macs without one, as a small pill at the top of the screen.
+
+### The quick way
+
+Paste this into **Terminal** and press Return:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scripts/install.sh | bash
 ```
 
-Downloads the latest release into `/Applications` and opens it. Because `curl` downloads aren't quarantined, macOS doesn't show a warning.
+It downloads the latest version, puts it in **Applications**, and opens it. That's all.
 
-### Option 2: download the DMG
+### The drag-and-drop way
 
-1. Download **Notch-Porch-arm64.dmg** from the [latest release](https://github.com/shubhamcodess/notch-porch/releases/latest).
-2. Open it and drag **Notch Porch** into **Applications**.
-3. Open Notch Porch. macOS will say it can't verify the app (see below). Go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway**, and confirm.
+1. **Download** [`Notch-Porch-arm64.dmg`](https://github.com/shubhamcodess/notch-porch/releases/latest) from the latest release.
+2. **Open** it and drag **Notch Porch** onto **Applications**.
+3. **Open** Notch Porch from Applications.
+4. If macOS says it can't verify the app, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
 
-   Or, in Terminal, run this once and then open the app normally:
+> [!NOTE]
+> That prompt appears because Notch Porch is a free, independent app that isn't signed with a paid Apple Developer certificate. Everything is open source in this repo, and you can build it yourself. Prefer the Terminal? `xattr -cr "/Applications/Notch Porch.app"` clears it once.
 
-   ```bash
-   xattr -cr "/Applications/Notch Porch.app"
-   ```
-
-**Why the warning?** Notch Porch is a free hobby project and isn't signed with a paid Apple Developer certificate or notarized. macOS shows this prompt for any app that isn't. The code is all in this repo, and you can build it yourself.
-
-### Option 3: build from source
+### Build it yourself
 
 ```bash
 git clone https://github.com/shubhamcodess/notch-porch.git
-cd notch-porch
-npm install
-npm start          # run it
-npm run dist       # build dist/Notch-Porch-arm64.dmg and .zip
+cd notch-porch && npm install && npm start
 ```
 
-Needs Node 20+ and the Xcode command line tools (`xcode-select --install`), which provide the compiler for the small native helper. Without them the app still runs, minus the app-menu feature.
+Needs Node 20+ and Xcode's command line tools. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## First run
+<br>
 
-1. A small pill-and-bars icon appears in the menu bar, and a small pill sits beside the notch. There's no Dock icon.
-2. Hover the notch to open the card. Press **play** to start a random pick right away, or tap the **magnifier** to open Discover (moods, genres, quick picks) and search. No account needed.
-3. Optional: to get your own library and recommendations, open **Menu-bar icon → Music → Open YouTube Music window**, sign in to your Google account, and close the window (it just hides). Your login is remembered.
+## Your first minute
 
-### If Google refuses the sign-in
+| | |
+|:--|:--|
+| **1. Hover the notch** | The card opens. There's no Dock icon; look for the small pill-and-bars icon in your menu bar. |
+| **2. Press play** | A pick starts straight away. Or tap the magnifier to open Discover and choose a mood or genre. |
+| **3. Tap the lyrics button** | The artist line becomes the current lyric, in time with the song. |
+| **4. Allow Accessibility** *(optional)* | When macOS asks, say yes. It's only used to see where an app's menus end, so Notch Porch can step aside for them. |
 
-Google sometimes says "this browser may not be secure". Import your cookies instead:
+Want your own library and recommendations? Open **menu-bar icon → Music → Open YouTube Music window** and sign in once.
 
-1. Export your `youtube.com` / `google.com` cookies as JSON (the Cookie-Editor extension's export works).
-2. **Menu-bar icon → Music → Show data folder**, and save the file there as `cookies.json`.
-3. **Menu-bar icon → Music → Re-import cookies.json**.
+<br>
 
-`cookies.json` stays on your Mac and is git-ignored. Treat it like a password.
+## Controls
 
-### Accessibility permission (for "make room for app menus")
+| Do this | And this happens |
+|:--|:--|
+| Hover the notch | The card opens |
+| Move the mouse away | It folds back (also from search) |
+| Magnifier, or double-click the title | Discover and search. Back arrow or **Esc** goes up one level |
+| Lyrics button | Turns synced lyrics on and off |
+| Play with nothing loaded | Starts a random quick pick |
+| Shuffle | Shuffles the queue, or the genre playlist you're in |
+| Menu-bar icon | Theme, lyrics under the notch, sleep timer, settings, quit |
 
-On first launch macOS asks to let Notch Porch control your computer using accessibility features. It's only used to read where the frontmost app's menu titles end, nothing else, and nothing leaves your Mac. If you decline, everything else works, and the disc just stays put. You can grant it later under **System Settings → Privacy & Security → Accessibility**, or from the menu item that appears when permission is missing.
+<br>
 
-## Using it
+## Questions
 
-| Do this | To get this |
-|---|---|
-| Hover the notch | Open the card |
-| Move the cursor away | Fold it back |
-| Click the magnifier (or double-click the title) | Open Discover and search. Enter plays the first result; back arrow or Esc goes up one level |
-| Click shuffle | Shuffle the current queue. With nothing playing, it starts a shuffled mix from your recently played songs (signed in) or YouTube Music's home picks (signed out) |
-| Two-finger swipe sideways | Switch widgets (when you have more than one) |
-| Menu-bar icon | Theme, Launch at login, resource status, YouTube Music window, Reload, Quit |
+<details>
+<summary><b>Do I need a YouTube or Google account?</b></summary>
+<br>
+No. It plays and discovers music without one. Signing in only adds your own library and recommendations.
+</details>
 
-Settings live in `~/Library/Application Support/notch-porch/settings.json`:
+<details>
+<summary><b>Why does it ask for Accessibility access?</b></summary>
+<br>
+Only to read where the frontmost app's menu titles end, so the items can roll behind the notch instead of covering them. Nothing is recorded or sent anywhere, and everything else works if you say no.
+</details>
 
-| Key | Default | Meaning |
-|---|---|---|
-| `theme` | `dark` | `dark`, `glass` or `art` (also in the menu) |
-| `accent` | `#ff375f` | Accent colour for the visualizer and active buttons |
-| `notchWidth` | `200` | Fallback notch width in px; the real size is detected automatically |
-| `adblock` | `true` | Turn the ad blocker off |
-| `recentSearches` | `[]` | Your last searches shown in Discover (edit or clear it here) |
-| `genreTaps` | `{}` | How often you opened each genre; your most-used show first in Discover |
-| `lyrics` | `false` | Master switch for lyrics (the button in the card) |
-| `lyricsSubtitle` | `false` | Also show lyrics as a caption under the notch while the card is closed (needs `lyrics` on) |
-| `menuAvoid` | `true` | Roll the left item behind the notch when app menus reach it |
-| `sleepMinutes` | `5` | Minutes paused before sleep mode (`0` = never). Also in the menu: Music → Sleep after pause |
+<details>
+<summary><b>Is it safe to run an unsigned app?</b></summary>
+<br>
+The full source is in this repository and the releases are built by GitHub Actions from it. You can read it, or build it yourself with the steps above.
+</details>
 
-## Writing a widget
+<details>
+<summary><b>Google won't let me sign in.</b></summary>
+<br>
+It sometimes blocks sign-in inside embedded browsers. See <a href="docs/TROUBLESHOOTING.md#google-refuses-the-sign-in">Troubleshooting</a> for the cookie-import fallback.
+</details>
 
-A widget is a folder in `widgets/`:
+<details>
+<summary><b>How do I remove it?</b></summary>
+<br>
+Choose <b>Quit Notch Porch</b> from the menu-bar icon, then delete it from Applications. To remove its data too: <code>rm -rf ~/Library/Application\ Support/notch-porch</code>
+</details>
 
-```
-widgets/my-widget/
-├── manifest.json   { "name": "My widget", "order": 3, "renderer": "widget.js", "main": "main.js" }
-├── widget.js       export default { mount({ page, compact: { left, right }, api }) {} }
-└── main.js         optional: exports.setup = (ctx) => {}   // runs in the main process
-```
+<br>
 
-- `page` is the open card. `compact.left` and `compact.right` are the two slots beside the notch while collapsed.
-- `api.invoke(name, …)` / `api.on(name, cb)` talk to your `main.js` over a namespaced channel. `api.setActivity(true)` claims the collapsed slots, and `api.setPalette(colors)` tints the Album colors theme.
-- In `main.js`, `ctx.handle(name, fn)`, `ctx.send(name, data)`, `ctx.menuItems` (adds tray menu items) and `ctx.onQuit(fn)` are available.
+## Go deeper
 
-`widgets/_example` is a small clock widget to copy. Folders starting with `_` are ignored.
+| | |
+|:--|:--|
+| [How it works](docs/HOW_IT_WORKS.md) | Architecture, folder structure and the mechanics behind the notch |
+| [Design system](docs/DESIGN_SYSTEM.md) | Colors, type, motion and components, so new pieces feel native |
+| [Writing a widget](docs/WIDGETS.md) | Add a new page to the dock in a folder |
+| [Configuration](docs/CONFIGURATION.md) | Every setting and menu option |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Fixes for the common snags |
+| [Contributing](CONTRIBUTING.md) | Run it, change it, send it back |
 
-## Project layout
+<br>
 
-```
-src/main/        Electron main process: notch window, tray, resource monitor
-native/          menubar-watch.m: tiny helper that reads the frontmost app's menu extent
-src/renderer/    The card UI shell: layout, themes, hover logic, page switching
-widgets/music/   The YouTube Music widget (UI + hidden player + search)
-widgets/_example A starter widget
-scripts/         install.sh, ad-hoc signing hook
-.github/         Release workflow: push a v* tag to build and publish
-```
+## Credits and fine print
 
-## Uninstall
-
-Quit from **Menu-bar icon → Quit Notch Porch**, delete the app from Applications, and optionally remove your data:
-
-```bash
-rm -rf ~/Library/Application\ Support/notch-porch
-```
-
-## Disclaimer
-
-Notch Porch is an independent project and is **not affiliated with or endorsed by Google or YouTube**. It loads the official YouTube Music website in a hidden window and adds a notch interface on top. Lyrics are fetched live from LRCLIB for personal use and are subject to their owners' copyrights. Blocking ads may go against YouTube's terms of service; use it at your own discretion, and consider [YouTube Premium](https://www.youtube.com/premium) to support artists and the platform.
-
-## License
+Notch Porch is an independent project and is **not affiliated with or endorsed by Google or YouTube**. It loads the official YouTube Music website in a hidden window and puts a notch interface on top of it. Synced lyrics come from [LRCLIB](https://lrclib.net) and are fetched live for personal use; they're subject to their owners' copyrights and are never bundled here. Blocking ads may go against YouTube's terms of service, so use it at your own discretion, and consider [YouTube Premium](https://www.youtube.com/premium) to support artists.
 
 [MIT](LICENSE) © Shubham Prakash
