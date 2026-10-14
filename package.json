@@ -1,7 +1,7 @@
 {
   "name": "notch-porch",
   "productName": "Notch Porch",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "A widget dock that lives in the MacBook notch. Starts with a YouTube Music widget; more are easy to add.",
   "author": "Shubham Prakash",
   "license": "MIT",

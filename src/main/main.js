@@ -278,6 +278,10 @@ function buildTray(widgets) {
       { label: 'Quit Notch Porch', click: () => app.quit() }
     ];
     if (process.env.NOTCH_DEBUG) { const tree = (m) => m.map((i) => i.type === 'separator' ? '---' : i.label + (i.checked ? ' [x]' : '') + (i.submenu ? ' > (' + tree(i.submenu).join(' | ') + ')' : '')); console.log('[menu]', tree(template).join('\n       ')); }
+    if (!isMac) {                                     // sublabels are macOS-only: fold them into the label elsewhere
+      const fold = (items) => items.forEach((i) => { if (i.sublabel) { i.label = `${i.label} (${i.sublabel})`; delete i.sublabel; } if (Array.isArray(i.submenu)) fold(i.submenu); });
+      fold(template);
+    }
     const menu = Menu.buildFromTemplate(template);
     menu.on('menu-will-show', () => { menuOpen = true; });
     menu.on('menu-will-close', () => { menuOpen = false; if (menuDirty) { menuDirty = false; setTimeout(rebuild, 150); } });
@@ -285,6 +289,7 @@ function buildTray(widgets) {
   };
   rebuildTray = rebuild;
   rebuild();
+  if (isWin) tray.on('click', () => tray.popUpContextMenu());   // Windows only opens the menu on right-click otherwise
   startResourceMonitor(rebuild);
 }
 
@@ -363,7 +368,11 @@ ipcMain.handle('shell:config', () => ({ widgets: listWidgets(), notch: geometry(
 ipcMain.handle('shell:setSetting', (_e, key, value) => { settings[key] = value; saveSettings(); return settings; });
 
 // ---------- lifecycle ----------
+const gotLock = app.requestSingleInstanceLock();           // a second launch (double-click, update relaunch) just exits
+if (!gotLock) app.quit();
+
 app.whenReady().then(async () => {
+  if (!gotLock) return;
   if (isMac) app.dock.hide();
   loadSettings();
   detectNotch();

@@ -4,12 +4,12 @@ One person hosts a room and shares its ID. Others join, and everyone hears the s
 
 ## Using it
 
-1. Flip to the **Room** card (swipe, or tap the people icon under the card). The top row has your profile on the left: an auto-assigned friendly name and avatar (tap the avatar for a new one). Under it, on one line, are a **Host** button and a **Room ID** bar with a **Join** button at its end. Tap **Host**; the rows turn into your room's ID, like `Happy-Otter-47`, with a copy button and a **Close** button, and the member list sits below (the card grows so three members show before it scrolls).
+1. Flip to the **Room** card (swipe, or tap the people icon under the card). The top row has your profile on the left: an auto-assigned friendly name and avatar (tap the avatar for a new one). Under it, on one line, are a **Host** button and a **Room ID** bar with a **Join** button at its end. Tap **Host**; the rows turn into your room's ID, like `Happy-Otter-K3X9QA`, with a copy button and a **Close** button, and the member list sits below (the card grows so three members show before it scrolls).
 2. A friend opens their Room card, types the ID into the bar and taps **Join**.
 3. The music card follows the host from then on. As a guest you can't play, pause, skip or change songs. You can still search and **request** a song; the host sees it on the Room card and taps ✓ or ✗. Accepted songs play after the current one.
 4. Leave any time with the door icon. Music carries on normally on your own.
 
-Everyone has a friendly random name (`Sleepy-Panda`) that sticks between sessions, and the host's name plus two digits is the room ID. Avatars are free generated faces from [DiceBear](https://www.dicebear.com) ("fun-emoji"), drawn from the name alone so everyone sees the same face; initials show while they load or offline. There are no accounts. Up to 10 people fit in a room.
+Everyone has a friendly random name (`Sleepy-Panda`) that sticks between sessions, and the host's name plus a random 6-character code is the room ID (`Sleepy-Panda-K3X9QA`). The ID is also the encryption secret, so it is long enough that it can't be guessed. Avatars are free generated faces from [DiceBear](https://www.dicebear.com) ("fun-emoji"), drawn from the name alone so everyone sees the same face; initials show while they load or offline. There are no accounts. Up to 10 people fit in a room.
 
 ## How it works
 

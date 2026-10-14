@@ -51,7 +51,7 @@ exports.setup = async (ctx) => {
   function join(input) {
     if (room) return view;
     const id = names.normalizeId(input);
-    if (!/^[A-Za-z]+-[A-Za-z]+-\d{2}$/.test(id)) { view.error = 'bad-id'; push(); return view; }
+    if (!/^[A-Za-z]+-[A-Za-z]+-(\d{2}|[A-Za-z0-9]{6})$/.test(id)) { view.error = 'bad-id'; push(); return view; }
     view.me = { id: randomId(), name: profileName() };
     view.roomId = id;
     view.phase = 'joining';
