@@ -3,7 +3,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/shubhamcodess/notch-porch/releases/latest"><img src="https://img.shields.io/badge/Download-for%20Mac-0A84FF?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac"></a>
+  <a href="https://github.com/shubhamcodess/notch-porch/releases/latest/download/Notch-Porch-arm64.dmg"><img src="https://img.shields.io/badge/Download-for%20Mac-0A84FF?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac"></a>
+  &nbsp;
+  <a href="https://github.com/shubhamcodess/notch-porch/releases/latest/download/Notch-Porch-Setup-x64.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Download for Windows"></a>
   &nbsp;
   <a href="#install"><img src="https://img.shields.io/badge/Install-in%2030%20seconds-1D1D1F?style=for-the-badge" alt="Install in 30 seconds"></a>
 </p>
@@ -19,6 +21,7 @@
   <a href="https://github.com/shubhamcodess/notch-porch/commits/main"><img src="https://img.shields.io/github/last-commit/shubhamcodess/notch-porch?style=flat-square&color=8E8E93&label=last%20commit" alt="Last commit"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8E8E93?style=flat-square" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/macOS-12%2B-1D1D1F?style=flat-square&logo=apple" alt="macOS 12 or later">
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-1D1D1F?style=flat-square&logo=windows11" alt="Windows 10 or 11">
   <img src="https://img.shields.io/badge/Apple%20Silicon-ready-1D1D1F?style=flat-square" alt="Apple Silicon">
 </p>
 
@@ -26,9 +29,9 @@
 
 ## What it is
 
-The notch is dead space. **Notch Porch** turns it into a small, quiet dock for the things you want a glance away.
+The notch is dead space. **Notch Porch** turns it into a small, quiet dock for the things you want a glance away. On a MacBook it wraps the notch; on **Windows** it sits as a small pill at the top centre of your screen.
 
-Hover the notch and a card drops down. Move away and it folds back. Every widget gets its own page in the card and its own spot beside the notch. The first one is a full YouTube Music player. More are on the way, and you can [write your own](docs/WIDGETS.md) in a single folder.
+Hover the notch (or the pill on Windows) and a card drops down. Move away and it folds back. Every widget gets its own page in the card and its own spot beside the notch. The first one is a full YouTube Music player. More are on the way, and you can [write your own](docs/WIDGETS.md) in a single folder.
 
 <br>
 
@@ -74,12 +77,19 @@ Hover the notch and a card drops down. Move away and it folds back. Every widget
 
 ## Install
 
+| | Download | Needs |
+|:--|:--|:--|
+| **Mac** | [Notch-Porch-arm64.dmg](https://github.com/shubhamcodess/notch-porch/releases/latest/download/Notch-Porch-arm64.dmg) | Apple Silicon, macOS 12 or later |
+| **Windows** | [Notch-Porch-Setup-x64.exe](https://github.com/shubhamcodess/notch-porch/releases/latest/download/Notch-Porch-Setup-x64.exe) | Windows 10 or 11, 64-bit |
+
+All versions are on the [releases page](https://github.com/shubhamcodess/notch-porch/releases).
+
+### Mac
+
 > [!TIP]
-> Notch Porch is for **MacBooks with a notch** (any Apple Silicon Mac, macOS 12 or later). It also runs on Macs without one, as a small pill at the top of the screen.
+> Best on **MacBooks with a notch**. It also runs on Macs without one, as a small pill at the top of the screen.
 
-### The quick way
-
-Paste this into **Terminal** and press Return:
+**The quick way.** Paste this into **Terminal** and press Return:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scripts/install.sh | bash
@@ -87,9 +97,9 @@ curl -fsSL https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scri
 
 It downloads the latest version, puts it in **Applications**, and opens it. That's all.
 
-### The drag-and-drop way
+**The drag-and-drop way.**
 
-1. **Download** [`Notch-Porch-arm64.dmg`](https://github.com/shubhamcodess/notch-porch/releases/latest) from the latest release.
+1. **Download** the DMG above.
 2. **Open** it and drag **Notch Porch** onto **Applications**.
 3. **Open** Notch Porch from Applications.
 4. If macOS says it can't verify the app, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
@@ -99,7 +109,16 @@ It downloads the latest version, puts it in **Applications**, and opens it. That
 
 ### Windows
 
-Paste into **PowerShell**: `irm https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scripts/install.ps1 | iex`, or grab `Notch-Porch-Setup-x64.exe` from the releases. Details in [Windows](docs/WINDOWS.md).
+**The quick way.** Paste this into **PowerShell**:
+
+```powershell
+irm https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scripts/install.ps1 | iex
+```
+
+**Or run the installer.** Download the setup `.exe` above and open it. It installs just for you, with no admin rights, and starts right away. Look for the small icon in the system tray; click it for the menu.
+
+> [!NOTE]
+> Windows SmartScreen may say "Windows protected your PC" because the app isn't signed with a paid certificate. Click **More info**, then **Run anyway**. See [Windows](docs/WINDOWS.md) for details.
 
 ### Build it yourself
 
@@ -110,9 +129,14 @@ cd notch-porch && npm install && npm start
 
 Needs Node 20+ and Xcode's command line tools. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Updating
+### Updating, inside the app
 
-Notch Porch checks for a new release about once a day. When one is out, a small dot appears next to the menu-bar icon, macOS shows one notification banner, and **Update to vX.Y.Z** shows up at the top of its menu. Tap it: it downloads the release, verifies it, replaces the app and reopens itself. You can also check any time from **menu-bar icon → Settings → Check for updates**. Turn off **Notify me of new versions** if you don't want the daily check. It never installs anything without your tap.
+You never need to come back here to update. Notch Porch checks for a new release about once a day. When one is out, a small dot appears next to the menu-bar (or system tray) icon, you get one notification, and **Update to vX.Y.Z** shows up at the top of its menu.
+
+1. **Click the icon**, then **Update to vX.Y.Z**.
+2. It downloads the release, checks it, replaces the app and reopens itself. About ten seconds.
+
+This works the same on Mac and Windows. You can also check any time from **icon → Settings → Check for updates**, and turn off **Notify me of new versions** if you don't want the daily check. It never installs anything without your click.
 
 <br>
 
