@@ -109,16 +109,23 @@ It downloads the latest version, puts it in **Applications**, and opens it. That
 
 ### Windows
 
-**The quick way.** Paste this into **PowerShell**:
+**Download the installer** from the table above and open it. It installs just for you, with no admin rights, and starts right away. Look for the small icon in the system tray; click it for the menu.
 
-```powershell
-irm https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scripts/install.ps1 | iex
+> [!TIP]
+> Download it with **Chrome** or **Firefox**. They let you keep the file with one click. Edge adds an extra warning step.
+
+Because the app isn't signed with a paid certificate yet, Windows may warn you. That's expected, and it's safe to continue:
+
+1. **Browser:** if it says the file "isn't commonly downloaded", click **Keep** (Chrome: the `…` menu next to the file, then **Keep**).
+2. **Run it:** if the blue "Windows protected your PC" screen appears, click **More info**, then **Run anyway**.
+
+**Prefer the command line?** Open **Command Prompt** or **PowerShell** and paste:
+
+```bat
+curl.exe -L -o "%TEMP%\Notch-Porch-Setup.exe" https://github.com/shubhamcodess/notch-porch/releases/latest/download/Notch-Porch-Setup-x64.exe && "%TEMP%\Notch-Porch-Setup.exe"
 ```
 
-**Or run the installer.** Download the setup `.exe` above and open it. It installs just for you, with no admin rights, and starts right away. Look for the small icon in the system tray; click it for the menu.
-
-> [!NOTE]
-> Windows SmartScreen may say "Windows protected your PC" because the app isn't signed with a paid certificate. Click **More info**, then **Run anyway**. See [Windows](docs/WINDOWS.md) for details.
+`curl.exe` ships with Windows 10 (version 1803) and 11. A file downloaded this way has no browser warning on it. In PowerShell the same line works as long as you keep the `.exe` on the end of `curl`. More details in [Windows](docs/WINDOWS.md).
 
 ### Build it yourself
 
