@@ -355,6 +355,25 @@ function startMenuWatch(prompt = false) {
   proc.on('exit', () => { if (menuProc === proc) menuProc = null; });
 }
 
+// ---------- cursor watch (Windows/Linux) ----------
+// A click-through window only gets forwarded mouse events while the OS cooperates; on Windows they stop after a
+// while (focus moved elsewhere, fast exits) and mouseleave often never fires, so the card would stay open. Read
+// the real cursor instead and hand it to the renderer, which runs the same hover logic on it. macOS is untouched.
+let cursorTimer = null, lastCursor = '';
+function startCursorWatch() {
+  if (isMac || cursorTimer) return;
+  cursorTimer = setInterval(() => {
+    if (!shell || shell.isDestroyed()) return;
+    const p = screen.getCursorScreenPoint(), b = shell.getBounds();
+    const x = p.x - b.x, y = p.y - b.y;
+    const inWin = x >= 0 && y >= 0 && x < b.width && y < b.height;
+    const key = inWin ? `${x},${y}` : 'out';
+    if (key === lastCursor) return;              // only on change: no traffic while the mouse is still or elsewhere
+    lastCursor = key;
+    shell.webContents.send('shell:cursor', inWin ? { x, y } : null);
+  }, 60);
+}
+
 // ---------- shell IPC ----------
 ipcMain.on('shell:interactive', (_e, on) => {
   if (!shell) return;
@@ -385,6 +404,7 @@ app.whenReady().then(async () => {
   await setupWidgetMains(widgets);
   buildTray(widgets);
   startUpdateSchedule();
+  startCursorWatch();
   if (isMac && settings.menuAvoid !== false) {
     const first = !settings.menuAvoidAsked;           // show the macOS permission dialog once
     if (first) { settings.menuAvoidAsked = true; saveSettings(); }

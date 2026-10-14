@@ -297,7 +297,7 @@ function inside(e) {
 }
 // leaving the pill folds it back like always; while a widget holds it (typing in search) allow a little more slack
 const closeDelay = () => (holdOpen ? 650 : 280);
-document.addEventListener('mousemove', (e) => {
+function hover(e) {
   const hit = inside(e);
   if (hit !== interactive) {
     interactive = hit;
@@ -307,9 +307,14 @@ document.addEventListener('mousemove', (e) => {
   else if (pill.classList.contains('open') && !closeTimer) {
     closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, closeDelay());
   }
-});
-document.addEventListener('mouseleave', () => {
+}
+function leave() {
   interactive = false;
   window.notch.setInteractive(false);
-  closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, closeDelay());
-});
+  if (!closeTimer && pill.classList.contains('open')) closeTimer = setTimeout(() => { closeTimer = null; setOpen(false); }, closeDelay());
+}
+document.addEventListener('mousemove', hover);
+document.addEventListener('mouseleave', leave);
+// Windows/Linux: the main process reports the real cursor (window-relative, or null when it left the window),
+// because forwarded mouse events and mouseleave are unreliable on a click-through window there
+window.notch.on('shell:cursor', (p) => { if (p) hover({ clientX: p.x, clientY: p.y }); else leave(); });
