@@ -368,6 +368,10 @@ ipcMain.handle('shell:config', () => ({ widgets: listWidgets(), notch: geometry(
 ipcMain.handle('shell:setSetting', (_e, key, value) => { settings[key] = value; saveSettings(); return settings; });
 
 // ---------- lifecycle ----------
+// Windows: GPU compositing of a transparent, click-through window can paint it as an opaque white bar on some drivers
+// (confirmed with --disable-gpu). Software rendering is plenty for this UI. NOTCH_GPU=1 opts back in.
+if (isWin && !process.env.NOTCH_GPU) app.disableHardwareAcceleration();
+
 const gotLock = app.requestSingleInstanceLock();           // a second launch (double-click, update relaunch) just exits
 if (!gotLock) app.quit();
 

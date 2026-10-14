@@ -11,3 +11,5 @@ html.os-win .r-btn, html.os-win .r-input { letter-spacing: 0; }
 html.os-win ::-webkit-scrollbar { width: 6px; }
 html.os-win ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
 html.os-win ::-webkit-scrollbar-track { background: transparent; }
+/* no backdrop blur here: it is the part of the compositor that misbehaves with transparent windows */
+html.os-win body .skin { backdrop-filter: none; -webkit-backdrop-filter: none; }
