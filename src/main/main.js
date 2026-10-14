@@ -4,6 +4,7 @@
 
 const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, powerMonitor, Notification } = require('electron');
 const os = require('os');
+const { EventEmitter } = require('events');
 const updater = require('./updater');
 const path = require('path');
 const { spawn, execFileSync } = require('child_process');
@@ -23,6 +24,9 @@ const WIN_H = 320;
 let shell = null;
 let tray = null;
 let quitting = false;
+// a tiny message bus so widgets can cooperate without importing each other (a widget that nobody listens to is inert)
+const bus = new EventEmitter();
+bus.setMaxListeners(50);
 let holdFocus = false;
 const quitHooks = [];
 let menuProc = null;
@@ -36,7 +40,7 @@ let resourceHeavy = false;
 
 // ---------- settings (persisted in ~/Library/Application Support/notch-porch) ----------
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, menuAvoid: true, menuAvoidAsked: false, lyrics: false, lyricsSubtitle: false, autoUpdateCheck: true, lastUpdateCheck: 0, updateInfo: null, notifiedVersion: null, lastWidget: null };
+const DEFAULTS = { theme: 'dark', accent: '#ff375f', notchWidth: 200, adblock: true, sleepMinutes: 5, menuAvoid: true, menuAvoidAsked: false, lyrics: false, lyricsSubtitle: false, autoUpdateCheck: true, roomsEnabled: true, lastUpdateCheck: 0, updateInfo: null, notifiedVersion: null, lastWidget: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) }; } catch { /* first run */ }
@@ -51,13 +55,15 @@ function listWidgets() {
   return fs.readdirSync(WIDGETS_DIR, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith('_') && fs.existsSync(path.join(WIDGETS_DIR, d.name, 'manifest.json')))
     .map((d) => ({ ...JSON.parse(fs.readFileSync(path.join(WIDGETS_DIR, d.name, 'manifest.json'), 'utf8')), id: d.name }))
-    .filter((w) => w.enabled !== false)
+    .filter((w) => w.enabled !== false && (!w.setting || settings[w.setting] !== false))   // "setting": a settings key that switches the widget on/off
     .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
 }
 
 async function setupWidgetMains(widgets) {
-  for (const w of widgets) {
-    if (!w.main) continue;
+  // all widgets start together: one slow setup (the music player's ad blocker download, say) must not hold back
+  // another widget's handlers, or its page would sit waiting
+  await Promise.all(widgets.map(async (w) => {
+    if (!w.main) return;
     const mod = require(path.join(WIDGETS_DIR, w.id, w.main));
     const ns = `w:${w.id}:`;
     const ctx = {
@@ -68,8 +74,10 @@ async function setupWidgetMains(widgets) {
       onQuit: (fn) => quitHooks.push(fn),
       handle: (name, fn) => ipcMain.handle(ns + name, (_e, ...args) => fn(...args)),
       send: (name, data) => { if (shell && !shell.isDestroyed()) shell.webContents.send(ns + name, data); },
+      bus: { emit: (name, data) => bus.emit(name, data), on: (name, fn) => bus.on(name, fn) },   // cross-widget events
       menuItems: [], // static tray items (shown in the widget's submenu)
       menu: (fn) => { w._menuFn = fn; },            // dynamic items: fn() is called every time the tray menu is rebuilt
+      rebuildMenu: () => rebuildTray(),
       setSetting: (key, value) => { settings[key] = value; saveSettings(); shell?.webContents.send('shell:settings', settings); rebuildTray(); }
     };
     try {
@@ -78,7 +86,7 @@ async function setupWidgetMains(widgets) {
     } catch (e) {
       console.error(`[widget ${w.id}] setup failed:`, e);
     }
-  }
+  }));
 }
 
 // ---------- notch geometry ----------

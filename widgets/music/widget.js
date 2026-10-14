@@ -12,6 +12,7 @@ const ICONS = {
   search: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>`,
   back: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>`,
   lyrics: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6.5L8 21v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M7.5 9h9M7.5 12.5h5.5"/></svg>`,
+  people: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20c.5-3.4 3-5.2 6.2-5.2s5.7 1.8 6.2 5.2"/><path d="M16 4.9a3.2 3.2 0 0 1 0 6.2M18.4 14.9c1.6.7 2.6 2.2 2.9 4.1"/></svg>`,
   heartFill: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.4-9.2-8.6C1.2 8.2 3.2 5 6.4 5c2 0 3.3 1.1 4.1 2.3h3c.8-1.2 2.1-2.3 4.1-2.3 3.2 0 5.2 3.2 3.6 6.4C19 15.6 12 20 12 20z"/></svg>`,
 };
 
@@ -121,6 +122,13 @@ const CSS = `
   content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; box-sizing: border-box;
   border: 2px solid rgba(0,0,0,.16); border-top-color: rgba(0,0,0,.85); animation: spin .75s linear infinite;
 }
+
+/* ── following a room host: playback is theirs, you can still search and ask ── */
+.m-locked .m-prev, .m-locked .m-play, .m-locked .m-next { opacity: .38; pointer-events: none; }
+.m-locked .m-bar { pointer-events: none; }
+.m-locked .m-shuffle { pointer-events: none; color: rgba(255,255,255,.62); }
+.m-row.requested { opacity: .55; pointer-events: none; }
+.m-row.hostonly { opacity: .38; pointer-events: none; }
 
 /* ── controls ── */
 .m-ctrls { display: flex; align-items: center; justify-content: center; gap: 4px; }
@@ -247,6 +255,7 @@ export default {
     const likeBtn = $('.m-like');
     let state = { d: 0, t: 0 };
     let artUrl = '';
+    let locked = false;                    // a room host decides what plays; we only search and ask
     let has = false, asleep = false, cardOpen = false, lastActive = Date.now(), leaveTimer = null;
 
     // ── sleep mode: paused for a while → dim note only, until hover or playback wakes it ──
@@ -325,12 +334,21 @@ export default {
       api.setHeight(null); api.hold(false);
     };
     const play = (t) => { setLoading(true); api.invoke('play', t); endSearch(); };
+    // while following a room: ask the host to queue it, and say so right on the row
+    const requestSong = (r, target, row) => {
+      api.invoke('request', { id: target.id, title: r.title, artist: r.artist ?? r.subtitle ?? '', art: r.art || '' });
+      if (row) { row.classList.add('requested'); row.querySelector('span').textContent = 'Requested'; }
+    };
     const rowEl = (r, target) => {
       const b = el('<button class="m-row" role="option"><img alt=""><div class="t"><b></b><span></span></div></button>');
       if (r.art) b.querySelector('img').src = r.art;
       b.querySelector('b').textContent = r.title;
       b.querySelector('span').textContent = r.artist ?? r.subtitle ?? '';
-      b.onclick = () => play(target);
+      if (locked && !target.id) b.classList.add('hostonly');            // a whole playlist can't be requested
+      b.onclick = () => {
+        if (locked) { if (target.id) { requestSong(r, target, b); } return; }
+        play(target);
+      };
       return b;
     };
     const chipEl = (label, onClick, cls = '') => {
@@ -432,11 +450,12 @@ export default {
       if (e.key === 'Enter' && input.value.trim()) {
         const q = input.value.trim();
         remember(q);
-        if (found[0] && view === 'results') play({ id: found[0].id }); else runSearch(q);
+        if (found[0] && view === 'results') { if (locked) requestSong(found[0], { id: found[0].id }, results.querySelector('.m-row')); else play({ id: found[0].id }); } else runSearch(q);
       }
     };
 
     playBtn.onclick = async () => {
+      if (locked) return;
       if (!state.title) setLoading(true);            // nothing loaded yet: picking and starting a song takes a few seconds
       const ok = await api.invoke('toggle');
       if (!ok) setLoading(false);
@@ -444,6 +463,7 @@ export default {
     $('.m-next').onclick = () => api.invoke('next');
     $('.m-prev').onclick = () => api.invoke('prev');
     shufBtn.onclick = async () => {
+      if (locked) return;
       if (!state.title) { artistEl.textContent = 'Finding something to shuffle…'; setLoading(true); }
       const r = await api.invoke('shuffle');
       if (r === 'empty') { artistEl.textContent = "Couldn't find anything to shuffle"; setLoading(false); }
@@ -525,6 +545,14 @@ export default {
       api.setCaption(cap && state.playing && line ? line : null);   // nothing during instrumental gaps
     }, 150);
     lyrBtn.onclick = () => api.setSetting('lyrics', !api.settings.lyrics);
+
+    api.on('lock', (m) => {
+      locked = !!(m && m.locked);
+      page.classList.toggle('m-locked', locked);
+      shufBtn.innerHTML = locked ? ICONS.people : ICONS.shuffle;
+      shufBtn.title = locked ? `Following ${m.host || 'the host'}` : 'Shuffle';
+      shufBtn.setAttribute('aria-label', shufBtn.title);
+    });
 
     api.on('state', (s) => {
       state = s;

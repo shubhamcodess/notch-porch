@@ -1,0 +1,9 @@
+{
+  "name": "Room",
+  "order": 2,
+  "renderer": "widget.js",
+  "main": "main.js",
+  "transient": true,
+  "setting": "roomsEnabled",
+  "icon": "people"
+}

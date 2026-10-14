@@ -19,6 +19,12 @@ Folders starting with `_` are ignored. `widgets/_example` is a small clock to co
 
 `name` labels the page and its menu. `order` sorts the pages. `main` is optional. Add `"enabled": false` to hide a widget.
 
+| Key | Meaning |
+|---|---|
+| `icon` | The small glyph shown for this page under the card: `music` or `people` (otherwise a dot) |
+| `transient` | A page you visit rather than live on: after the card closes, the dock returns to the first normal page |
+| `setting` | A settings key that switches the widget on and off (for example `"roomsEnabled"`); the widget is hidden when it is `false` |
+
 ## widget.js (the card)
 
 ```js
@@ -44,6 +50,7 @@ export default {
 | `api.setBeat(0..1)` | Drive beat-reactive effects (`--beat` in CSS) |
 | `api.setPlaying(bool)` | Show the pulse line when the sides are tucked |
 | `api.setCaption(text \| null)` | A one-line caption under the notch (hidden while the card is open) |
+| `api.setBadge(n)` | A small pip on this page's dot (for example, something needs attention); `0` clears it |
 | `api.setHeight(px \| null)` | Make the open card taller (for example, a list) |
 | `api.hold(bool)` | Take keyboard focus for typing; the card still folds back when the mouse leaves |
 | `api.onOpen(cb)` | Called with `true` / `false` as the card opens and closes |
@@ -69,6 +76,8 @@ exports.setup = async (ctx) => {
 | `handle(name, fn)` / `send(name, data)` | Two-way messages with your `widget.js` |
 | `settings` | The live settings object |
 | `setSetting(key, value)` | Persist and broadcast a setting |
+| `bus.emit(name, data)` / `bus.on(name, fn)` | Talk to other widgets without importing them (see [Rooms](ROOMS.md) for a real example) |
+| `rebuildMenu()` | Refresh the tray menu after your state changes |
 | `userData` | The app's data folder |
 | `menu(fn)` / `menuItems[]` | Items for your widget's submenu |
 | `onQuit(fn)` / `quitting()` | Shutdown hooks |

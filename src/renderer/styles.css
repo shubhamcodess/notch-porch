@@ -11,7 +11,8 @@
   --edge-gap: 10px;             /* how far the side items sit from the notch */
   --compact-w: calc(var(--notch-w) + var(--side) * 2);
   --open-w: 380px;
-  --open-h: 176px;
+  --base-h: 176px;              /* the card's normal height (a little taller when there is more than one page) */
+  --open-h: var(--base-h);
   --slot: 22px;
   --eq-h: 12px;
   --r-open: 26px;
@@ -188,44 +189,38 @@ body.cap-on .pill.open ~ .lyric-caption { opacity: 0; transform: translateX(-50%
 /* ── expanded content area ── */
 .expanded {
   position: absolute; inset: 0; z-index: 1;
-  padding: calc(var(--notch-h) + 4px) 20px 14px;
+  padding: calc(var(--notch-h) + 4px) 20px 10px;
   display: flex; flex-direction: column; gap: 6px;
   opacity: 0; pointer-events: none;
   transition: opacity .2s ease;
 }
 .pill.open .expanded { opacity: 1; pointer-events: auto; transition-delay: .1s; }
-.pages { flex: 1; position: relative; min-height: 0; }
+.pages { flex: 1; position: relative; min-height: 0; perspective: 900px; perspective-origin: 50% 35%; }
 .page {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; gap: 10px;
-  /* door animation — start tucked to the right */
+  /* pages are cards: they flip about their vertical axis */
   opacity: 0; pointer-events: none;
-  transform: translateX(28px) scale(.97);
-  transform-origin: left center;
-  transition:
-    opacity .3s var(--ease),
-    transform .35s var(--ease);
+  transform: rotateY(62deg) scale(.96); transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: opacity .34s var(--ease), transform .56s var(--ease);
 }
-.page.active {
-  opacity: 1; pointer-events: auto;
-  transform: translateX(0) scale(1);
-}
-/* page leaving to left (door closing) */
-.page.leave {
-  opacity: 0; pointer-events: none;
-  transform: translateX(-28px) scale(.97);
-}
+.page.active { opacity: 1; pointer-events: auto; transform: rotateY(0) scale(1); }
+.page.leave { opacity: 0; pointer-events: none; transform: rotateY(-62deg) scale(.96); }
 
 /* ── page indicator dots ── */
-.dots {
-  display: flex; justify-content: center; gap: 5px; height: 12px; align-items: center;
-}
+/* page switcher: tiny icons, evenly spaced between the content and the card's edge */
+.dots { display: flex; justify-content: center; gap: 16px; height: 16px; align-items: center; margin-top: 4px; }
 .dots button {
-  width: 5px; height: 5px; padding: 0; border: 0; border-radius: 3px;
-  background: var(--text-3); cursor: pointer;
-  transition: width .28s var(--ease), background .28s, opacity .28s;
+  position: relative; width: 20px; height: 16px; padding: 0; border: 0; background: transparent; cursor: pointer;
+  display: grid; place-items: center; color: rgba(255,255,255,.3);
+  transition: color .25s ease, transform .3s var(--ease);
 }
-.dots button.active { width: 16px; background: rgba(255,255,255,.7); }
+.dots button svg { width: 12px; height: 12px; display: block; }
+.dots button i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.dots button:hover { color: rgba(255,255,255,.58); }
+.dots button.active { color: rgba(255,255,255,.92); transform: scale(1.1); }
+.dots button.badge::after { content: ''; position: absolute; top: -3px; right: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1.5px rgba(0,0,0,.55); }
 .dots:has(button:only-child) { display: none; }
 
 /* ── shared widget primitives ── */

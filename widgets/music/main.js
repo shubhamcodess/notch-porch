@@ -40,6 +40,7 @@ const STATE = `
   const like = document.querySelector('ytmusic-player-bar ytmusic-like-button-renderer');
   return {
     ready: !!v,
+    vid: new URL(location.href).searchParams.get('v') || '',
     title: (m && m.title) || '',
     artist: (m && m.artist) || '',
     album: (m && m.album) || '',
@@ -118,6 +119,16 @@ async function searchSongs(ses, query) {
 }
 
 exports.setup = async (ctx) => {
+  // ── remote control (used by the optional Room widget; inert on its own) ──
+  // A controller can lock the local controls (someone else decides what plays), drive playback, and feed a
+  // queue. Everything arrives over the cross-widget bus; nothing here knows what a "room" is.
+  let locked = false;
+  const queue = [];                                    // songs to play after the current one ends
+  let advancedFrom = '', applying = { vid: '', at: 0 };
+  let lastRemote = null, lastSeekAt = 0;              // the controller's latest state, so we can snap into place as soon as the video is ready
+  const GUARDED = new Set(['toggle', 'next', 'prev', 'shuffle', 'seek', 'play']);
+  const rawHandle = ctx.handle;
+  const handle = (name, fn) => rawHandle(name, GUARDED.has(name) ? (...a) => (locked ? false : fn(...a)) : fn);
   const ses = session.fromPartition('persist:ytmusic');
   ses.setUserAgent(UA);
 
@@ -177,9 +188,22 @@ exports.setup = async (ctx) => {
   const levelTimer = setInterval(async () => {
     if (!playing || levelsBusy || player.isDestroyed() || player.webContents.isLoading()) return;
     levelsBusy = true;
-    const m = await run(`(() => { const v = document.querySelector('video'); return v ? { b: window.__notchBands ? window.__notchBands() : null, t: v.currentTime } : null; })()`);
+    const m = await run(`(() => { const v = document.querySelector('video'); return v ? { b: window.__notchBands ? window.__notchBands() : null, t: v.currentTime, d: isFinite(v.duration) ? v.duration : 0, rs: v.readyState, vid: new URL(location.href).searchParams.get('v') || '' } : null; })()`);
     levelsBusy = false;
     if (m) ctx.send('levels', m);
+    if (m && !locked && queue.length && m.d > 5 && m.d - m.t < 0.6 && m.vid !== advancedFrom) {
+      advancedFrom = m.vid;                           // once per song
+      playTarget(queue.shift());
+    }
+    // following a controller: the moment the right video is playing, jump to where it is (no waiting for the next update)
+    // (only once the stream is ready: seeking a video that is still loading makes the player start over)
+    if (m && locked && lastRemote && m.vid === lastRemote.vid && m.rs >= 3 && m.d > 5 && m.t > 1.6 && Date.now() - lastSeekAt > 3000) {
+      const expected = lastRemote.pos + (lastRemote.playing ? (Date.now() - lastRemote.at) / 1000 : 0);
+      if (Math.abs(m.t - expected) > 1.5) {
+        lastSeekAt = Date.now();
+        run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${expected.toFixed(2)}; })()`);
+      }
+    }
   }, 70);
 
   const poll = setInterval(async () => {
@@ -189,9 +213,10 @@ exports.setup = async (ctx) => {
     playing = !!s.playing;
     const key = JSON.stringify(s);
     if (key !== last) { last = key; ctx.send('state', s); }
+    ctx.bus.emit('music:state', s);
   }, 1000);
 
-  ctx.handle('toggle', async () => {
+  handle('toggle', async () => {
     const hasTrack = await run(`!!(navigator.mediaSession && navigator.mediaSession.metadata && navigator.mediaSession.metadata.title)`);
     if (!hasTrack) {                                   // nothing loaded: start a random quick pick from home
       const d = await getDiscover(ses, gl()).catch(() => null);
@@ -205,8 +230,8 @@ exports.setup = async (ctx) => {
       if (v && v.src) { v.paused ? v.play() : v.pause(); return true; }
       const b = document.querySelector('ytmusic-player-bar #play-pause-button'); b && b.click(); return !!b; })()`);
   });
-  ctx.handle('next', () => run(click('ytmusic-player-bar .next-button')));
-  ctx.handle('prev', () => run(click('ytmusic-player-bar .previous-button')));
+  handle('next', () => run(click('ytmusic-player-bar .next-button')));
+  handle('prev', () => run(click('ytmusic-player-bar .previous-button')));
   // Shuffle: toggle on the current queue; with nothing queued, start a shuffled mix from
   // recently played (signed in) or YouTube Music's home picks (signed out).
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -217,7 +242,7 @@ exports.setup = async (ctx) => {
   const SHUFFLE_ON = `(() => { const bar = document.querySelector('ytmusic-player-bar'); const b = bar && bar.querySelector('.shuffle'); if (b && !bar.hasAttribute('shuffle-on')) b.click(); return !!b; })()`;
   const SEEDS = `(() => [...new Set([...document.querySelectorAll('a[href*="watch?v="]')].map((a) => (a.getAttribute('href').match(/[?&]v=([\\w-]{11})/) || [])[1]).filter(Boolean))])()`;
   let shuffling = false;
-  ctx.handle('shuffle', async () => {
+  handle('shuffle', async () => {
     // a track is loaded → there is a queue; the (often hidden) button still works when clicked by script
     if (await run(`(() => { if (!(navigator.mediaSession && navigator.mediaSession.metadata && navigator.mediaSession.metadata.title)) return false; const b = document.querySelector('ytmusic-player-bar .shuffle'); if (b) b.click(); return !!b; })()`)) return 'toggled';
     if (shuffling) return 'busy';
@@ -238,26 +263,53 @@ exports.setup = async (ctx) => {
       return 'started';
     } finally { shuffling = false; }
   });
-  ctx.handle('like', () => run(click('ytmusic-player-bar ytmusic-like-button-renderer #button-shape-like button, ytmusic-player-bar ytmusic-like-button-renderer .like')));
-  ctx.handle('seek', (sec) => run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${Number(sec) || 0}; })()`));
-  ctx.handle('lyrics', (meta) => getLyrics(meta, ctx.userData));
-  ctx.handle('search', (q) => searchSongs(ses, String(q || '').trim().slice(0, 120)));
+  handle('like', () => run(click('ytmusic-player-bar ytmusic-like-button-renderer #button-shape-like button, ytmusic-player-bar ytmusic-like-button-renderer .like')));
+  handle('seek', (sec) => run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${Number(sec) || 0}; })()`));
+  handle('lyrics', (meta) => getLyrics(meta, ctx.userData));
+  handle('search', (q) => searchSongs(ses, String(q || '').trim().slice(0, 120)));
   // play a song (its auto-mix follows) or a whole playlist: { id } | { id, list } | { list } (a bare string is a song id)
   const playTarget = (t) => {
     const x = typeof t === 'string' ? { id: t } : t || {};
     const ok = (v) => typeof v === 'string' && /^[\w-]{6,64}$/.test(v);
     if (!ok(x.id) && !ok(x.list)) return false;
-    const q = ok(x.id) ? `v=${x.id}&list=${ok(x.list) ? x.list : `RDAMVM${x.id}`}` : `list=${x.list}`;
+    const q = ok(x.id) ? (x.solo ? `v=${x.id}` : `v=${x.id}&list=${ok(x.list) ? x.list : `RDAMVM${x.id}`}`) : `list=${x.list}`;
     autoplay = true;
     player.loadURL(`${HOME}watch?${q}`);
     return true;
   };
-  ctx.handle('play', (t) => playTarget(t));
+  handle('play', (t) => playTarget(t));
+
+  // follow a remote controller: load its track, keep the position and play/pause state in step
+  async function applyRemote(st) {
+    if (!locked || !st || !st.vid) return;
+    lastRemote = { vid: st.vid, pos: Number(st.pos) || 0, playing: !!st.playing, at: Date.now() };
+    const cur = await run(`(() => { const v = document.querySelector('video'); return { vid: new URL(location.href).searchParams.get('v') || '', t: v ? v.currentTime : 0, paused: v ? v.paused : true, has: !!v }; })()`);
+    if (!cur) return;
+    if (cur.vid !== st.vid) {
+      if (applying.vid === st.vid && Date.now() - applying.at < 9000) return;   // already loading it
+      applying = { vid: st.vid, at: Date.now() };
+      playTarget({ id: st.vid, solo: true });
+      return;
+    }
+    if (!cur.has) return;
+    if (Math.abs(cur.t - st.pos) > 1.5) run(`(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${Number(st.pos) || 0}; })()`);
+    if (st.playing && cur.paused) run(`(() => { const v = document.querySelector('video'); if (v) v.play(); })()`);
+    else if (!st.playing && !cur.paused) run(`(() => { const v = document.querySelector('video'); if (v) v.pause(); })()`);
+  }
+  ctx.bus.on('music:lock', (m) => { locked = !!(m && m.locked); applying = { vid: '', at: 0 }; lastRemote = null; ctx.send('lock', { locked, host: (m && m.host) || '' }); });
+  ctx.bus.on('music:apply', applyRemote);
+  ctx.bus.on('music:enqueue', (t) => { if (t && /^[\w-]{6,64}$/.test(t.id || '')) queue.push(t); });
+  // while locked the UI asks instead of playing; the controller decides
+  handle('request', (t) => {
+    if (!locked || !t || !/^[\w-]{6,64}$/.test(t.id || '')) return false;
+    ctx.bus.emit('music:request', { id: t.id, title: String(t.title || '').slice(0, 120), artist: String(t.artist || t.subtitle || '').slice(0, 120), art: String(t.art || '') });
+    return true;
+  });
   const gl = () => require('electron').app.getLocaleCountryCode() || 'US';
-  ctx.handle('discover', () => getDiscover(ses, gl()).catch((e) => { console.warn('[music] discover failed:', e.message); return null; }));
-  ctx.handle('genre', (g) => getGenre(ses, g?.browseId, g?.params, gl()).catch((e) => { console.warn('[music] genre failed:', e.message); return null; }));
-  ctx.handle('openPlayer', () => showPlayer());
-  ctx.handle('reloadCookies', async () => { const n = await importCookies(ses, ctx.userData); player.reload(); return n; });
+  handle('discover', () => getDiscover(ses, gl()).catch((e) => { console.warn('[music] discover failed:', e.message); return null; }));
+  handle('genre', (g) => getGenre(ses, g?.browseId, g?.params, gl()).catch((e) => { console.warn('[music] genre failed:', e.message); return null; }));
+  handle('openPlayer', () => showPlayer());
+  handle('reloadCookies', async () => { const n = await importCookies(ses, ctx.userData); player.reload(); return n; });
 
   const SLEEP_CHOICES = [0, 1, 2, 5, 10, 15, 30];
   ctx.menu(() => [

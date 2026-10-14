@@ -2,5 +2,6 @@
   "name": "Music",
   "order": 1,
   "renderer": "widget.js",
-  "main": "main.js"
+  "main": "main.js",
+  "icon": "music"
 }

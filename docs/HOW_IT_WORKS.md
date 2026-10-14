@@ -40,6 +40,7 @@ notch-porch/
 │   │   ├── discover.js      live moods, genres, quick picks
 │   │   ├── lyrics.js        synced lyrics lookup and matching
 │   │   └── audio-probe.js   injected into the player to read the audio levels
+│   ├── room/                listen together: host or join a room (see ROOMS.md)
 │   └── _example/            a starter widget (folders starting with _ are ignored)
 ├── native/menubar-watch.m   small helper: notch size, app-menu extent, status icons
 ├── scripts/                 install.sh, signing hook, banner generator
@@ -85,6 +86,10 @@ While an item is tucked, the strip it left is excluded from hover so clicks reac
 ### Lyrics, in short
 
 Lyrics come from LRCLIB, searched fuzzily from several query variants. An entry is accepted only when its title, version (remix, slowed, acoustic…), length and artist all agree, and its last line is not sung after the track ends (entries are often timed for a longer cut). English-letter entries are preferred. If nothing passes, the card just shows the artist name. The line is chosen from the exact playback time, so it stays in sync through seeks.
+
+## Rooms
+
+The Room widget lets people listen in sync. It's a plain widget that talks to Music only over a small event bus, so it can be deleted without touching anything else. See [ROOMS.md](ROOMS.md).
 
 ## Resource monitor
 

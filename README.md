@@ -60,6 +60,16 @@ Hover the notch and a card drops down. Move away and it folds back. Every widget
   </tr>
 </table>
 
+### Listen together
+
+<table>
+  <tr>
+    <td width="33%" valign="top"><b>Host or join a room</b><br>Flip to the Room card, tap Host, and share the ID. A friend types it in and they're in. Everyone gets a friendly name like <code>Sleepy-Panda</code>.</td>
+    <td width="33%" valign="top"><b>Everyone hears the same moment</b><br>Each person plays through their own Notch Porch. Only tiny sync messages are shared, never audio.</td>
+    <td width="33%" valign="top"><b>The host decides</b><br>Guests can search and request a song; the host taps ✓ or ✗. <a href="docs/ROOMS.md">How rooms work</a></td>
+  </tr>
+</table>
+
 <br>
 
 ## Install
@@ -122,6 +132,8 @@ Want your own library and recommendations? Open **menu-bar icon → Music → Op
 | Hover the notch | The card opens |
 | Move the mouse away | It folds back (also from search) |
 | Magnifier, or double-click the title | Discover and search. Back arrow or **Esc** goes up one level |
+| Two-finger swipe sideways, or tap the small icon under the card | Flip between cards (Music, Room). The card follows your fingers |
+| Room card | Host a room, or join one with its ID |
 | Lyrics button | Turns synced lyrics on and off |
 | Play with nothing loaded | Starts a random quick pick |
 | Shuffle | Shuffles the queue, or the genre playlist you're in |
@@ -175,6 +187,7 @@ Choose <b>Quit Notch Porch</b> from the menu-bar icon, then delete it from Appli
 |:--|:--|
 | [How it works](docs/HOW_IT_WORKS.md) | Architecture, folder structure and the mechanics behind the notch |
 | [Design system](docs/DESIGN_SYSTEM.md) | Colors, type, motion and components, so new pieces feel native |
+| [Rooms](docs/ROOMS.md) | Listening together: how it works and how to remove it |
 | [Writing a widget](docs/WIDGETS.md) | Add a new page to the dock in a folder |
 | [Configuration](docs/CONFIGURATION.md) | Every setting and menu option |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Fixes for the common snags |

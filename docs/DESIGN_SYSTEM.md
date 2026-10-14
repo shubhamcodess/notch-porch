@@ -63,6 +63,12 @@ One easing for almost everything: `cubic-bezier(.32, .72, 0, 1)` (`--ease`), a f
 
 Avoid blur filters in animations; this window is transparent and they stutter.
 
+## Pages and the switcher
+
+- **Cards flip.** Pages turn about their vertical axis (62° with a little scale). A two-finger horizontal swipe drives the flip live, so the card follows your fingers; past the halfway point it completes, otherwise it springs back. Tapping an icon flips too.
+- **Page icons, not dots.** Each page has a 12 px stroke glyph (manifest `icon`) under the content, evenly spaced from the content above and the card edge below. The active one is bright and slightly larger, and a small accent pip marks a page that needs attention.
+- **Height.** The card is 184 px tall when there is more than one page (176 px with one), so the icon row has room.
+
 ## Components
 
 - **Control button.** Round, translucent; the play button is white with a dark glyph. *On* state is a coloured glyph with no background.
