@@ -135,8 +135,16 @@ exports.setup = async (ctx) => {
   if (ctx.settings.adblock !== false) {
     try {
       const { ElectronBlocker } = require('@ghostery/adblocker-electron');
-      const fetch = require('cross-fetch');
-      const blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetch);
+      const { net } = require('electron');
+      // net.fetch uses the system trust store (Node's fetch fails behind proxies/antivirus that re-sign TLS);
+      // the compiled lists are cached on disk, so later launches work offline and start instantly.
+      const cache = path.join(ctx.userData, 'adblock-engine.bin');
+      try { if (Date.now() - fs.statSync(cache).mtimeMs > 7 * 864e5) fs.unlinkSync(cache); } catch { /* none yet */ }   // refresh weekly
+      const blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking((u, o) => net.fetch(u, o), {
+        path: cache,
+        read: (f) => fs.promises.readFile(f),
+        write: (f, d) => fs.promises.writeFile(f, d)
+      });
       blocker.enableBlockingInSession(ses);
       console.log('[music] ad blocker on');
     } catch (e) {
