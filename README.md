@@ -97,6 +97,10 @@ It downloads the latest version, puts it in **Applications**, and opens it. That
 > [!NOTE]
 > That prompt appears because Notch Porch is a free, independent app that isn't signed with a paid Apple Developer certificate. Everything is open source in this repo, and you can build it yourself. Prefer the Terminal? `xattr -cr "/Applications/Notch Porch.app"` clears it once.
 
+### Windows
+
+Paste into **PowerShell**: `irm https://raw.githubusercontent.com/shubhamcodess/notch-porch/main/scripts/install.ps1 | iex`, or grab `Notch-Porch-Setup-x64.exe` from the releases. Details in [Windows](docs/WINDOWS.md).
+
 ### Build it yourself
 
 ```bash

@@ -9,7 +9,7 @@ const fs = require('fs');
 
 const HOME = 'https://music.youtube.com/';
 // A plain Chrome UA (without "Electron") keeps Google sign-in and YT Music happy.
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+const UA = `Mozilla/5.0 (${require('../../src/main/platform').isWin ? 'Windows NT 10.0; Win64; x64' : 'Macintosh; Intel Mac OS X 10_15_7'}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36`;
 
 // Runs inside the YT Music page: mutes + fast-forwards any video ad and clicks "Skip".
 const AD_SKIP = `

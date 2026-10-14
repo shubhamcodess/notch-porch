@@ -1,0 +1,13 @@
+/* Windows layout. Loaded only on Windows (renderer.js adds the <link>), so the Mac look is untouched.
+   There is no notch here: the dock is the small pill at the top centre, with the same card below it. */
+:root {
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --sans-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --serif: "Segoe UI", Georgia, serif;
+}
+html.os-win body { -webkit-font-smoothing: auto; }
+/* Segoe sits a little taller than SF: give small labels a touch of room */
+html.os-win .r-btn, html.os-win .r-input { letter-spacing: 0; }
+html.os-win ::-webkit-scrollbar { width: 6px; }
+html.os-win ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
+html.os-win ::-webkit-scrollbar-track { background: transparent; }

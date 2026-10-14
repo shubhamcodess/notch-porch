@@ -58,6 +58,11 @@ function applyGeometry(n) {
   hasNotch = n.hasNotch;
   applyMenubar(lastMenu);
 }
+if (cfg.platform && cfg.platform !== 'mac') {      // the Windows layout lives in its own file; the Mac build never loads it
+  document.documentElement.classList.add(`os-${cfg.platform}`);
+  const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `platform-${cfg.platform}.css`;
+  document.head.appendChild(l);
+}
 applySettings(settings);
 applyGeometry(cfg.notch);
 window.notch.on('shell:settings', applySettings);

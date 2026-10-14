@@ -8,6 +8,7 @@ const { EventEmitter } = require('events');
 const updater = require('./updater');
 const path = require('path');
 const { spawn, execFileSync } = require('child_process');
+const { isMac, isWin } = require('./platform');
 const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -93,6 +94,7 @@ async function setupWidgetMains(widgets) {
 // Exact hardware notch size (points) from the native helper; null on Macs without a notch or without the helper.
 let detectedNotch = null;
 function detectNotch() {
+  if (!isMac) { detectedNotch = null; return; }
   try {
     const j = JSON.parse(execFileSync(menuBin(), ['--notch'], { timeout: 2000 }).toString());
     detectedNotch = j.notchWidth > 0 ? { w: j.notchWidth, h: j.notchHeight } : null;
@@ -102,7 +104,7 @@ function detectNotch() {
 function geometry() {
   const d = screen.getPrimaryDisplay();
   const menuBar = d.workArea.y - d.bounds.y;          // ~37–38px on notched Macs, ~24–25 otherwise
-  const hasNotch = menuBar >= 32;
+  const hasNotch = isMac && menuBar >= 32;      // Windows/Linux have no notch: the dock is a small pill
   return {
     display: d,
     x: d.bounds.x + Math.round((d.bounds.width - WIN_W) / 2),
@@ -118,11 +120,11 @@ function createShell() {
     frame: false, transparent: true, backgroundColor: '#00000000',
     resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
     hasShadow: false, skipTaskbar: true, alwaysOnTop: true, enableLargerThanScreen: true,
-    type: 'panel',
+    ...(isMac ? { type: 'panel' } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
   shell.setAlwaysOnTop(true, 'screen-saver');            // above the menu bar
-  shell.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (isMac) shell.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   shell.setPosition(g.x, g.y);                            // re-assert: macOS may push it under the menu bar
   shell.setIgnoreMouseEvents(true, { forward: true });    // click-through until the cursor is on the pill
   shell.loadFile(path.join(ROOT, 'src', 'renderer', 'index.html'));
@@ -182,7 +184,8 @@ async function installUpdate() {
   // a dev run, or a folder we can't write to: open the release page instead of half-installing
   let writable = false;
   try { fs.accessSync(path.dirname(dest), fs.constants.W_OK); writable = true; } catch { /* needs admin */ }
-  if (!app.isPackaged || !info.asset || !writable || !dest.endsWith('.app')) {
+  const installable = isWin ? true : (writable && dest.endsWith('.app'));   // Windows: the per-user installer needs no admin
+  if (!app.isPackaged || !info.asset || !installable) {
     require('electron').shell.openExternal(info.page || 'https://github.com/shubhamcodess/notch-porch/releases/latest');
     return;
   }
@@ -227,15 +230,15 @@ function startUpdateSchedule() {
 function buildTray(widgets) {
   const icon = (n) => nativeImage.createFromPath(path.join(ROOT, 'assets', `leaf-${n}.png`));
   const leaves = { green: icon('green'), yellow: icon('yellow') };
-  const trayIcon = nativeImage.createFromPath(path.join(ROOT, 'assets', 'trayTemplate.png'));
-  trayIcon.setTemplateImage(true); // macOS tints it for light/dark menu bars
+  const trayIcon = nativeImage.createFromPath(path.join(ROOT, 'assets', isWin ? 'tray-win.png' : 'trayTemplate.png'));
+  if (isMac) trayIcon.setTemplateImage(true); // macOS tints it for light/dark menu bars
   tray = new Tray(trayIcon);
   const rebuild = () => {
     if (menuOpen) { menuDirty = true; return; }       // replacing a menu under the user's cursor makes it collapse
     const login = app.getLoginItemSettings().openAtLogin;
     tray.setToolTip(`Notch Porch — ${resourceHeavy ? 'using significant resources' : 'running normally'}${upd.phase === 'available' ? ` · update v${upd.info.version} available` : ''}`);
     const wantTitle = upd.phase === 'available' ? ' •' : '';   // a small dot next to the icon when there is an update
-    if (tray.getTitle() !== wantTitle) tray.setTitle(wantTitle);
+    if (isMac && tray.getTitle() !== wantTitle) tray.setTitle(wantTitle);
     const save = () => { saveSettings(); shell?.webContents.send('shell:settings', settings); };
     // every widget gets its own submenu named after it
     const widgetMenus = widgets.map((w) => ({ label: w.name, submenu: [...(w._menu || []), ...(w._menuFn ? w._menuFn() : [])] })).filter((m) => m.submenu.length);
@@ -256,6 +259,7 @@ function buildTray(widgets) {
           updateItem(),
           { label: 'Notify me of new versions', type: 'checkbox', checked: settings.autoUpdateCheck !== false, click: (item) => { settings.autoUpdateCheck = item.checked; save(); } },
           { type: 'separator' },
+          ...(isMac ? [
           {
             label: 'Make room for app menus', type: 'checkbox', checked: settings.menuAvoid !== false,
             click: (item) => {
@@ -265,6 +269,7 @@ function buildTray(widgets) {
             }
           },
           ...(settings.menuAvoid !== false && !menuTrusted ? [{ label: 'Allow Accessibility access…', click: grantAccess }] : []),
+          ] : []),
           { label: 'Launch at login', type: 'checkbox', checked: login, click: () => { app.setLoginItemSettings({ openAtLogin: !login }); rebuild(); } }
         ]
       },
@@ -323,7 +328,7 @@ function sendMenubar(right, status) {
 function stopMenuWatch() { if (menuProc) { menuProc.kill(); menuProc = null; } }
 function startMenuWatch(prompt = false) {
   stopMenuWatch();
-  if (settings.menuAvoid === false || !fs.existsSync(menuBin())) return;
+  if (!isMac || settings.menuAvoid === false || !fs.existsSync(menuBin())) return;
   const proc = spawn(menuBin(), prompt ? ['--prompt'] : []);
   menuProc = proc;
   let buf = '';
@@ -354,12 +359,12 @@ ipcMain.on('shell:interactive', (_e, on) => {
 ipcMain.handle('shell:hold', (_e, on) => { holdFocus = !!on; if (on && shell && !shell.isDestroyed()) { app.focus({ steal: true }); shell.focus(); } });
 // test hook: lets a debugger simulate an app whose menus reach `gap` px short of the notch
 ipcMain.handle('shell:menubar-debug', (_e, m) => { if (process.env.NOTCH_DEBUG && shell) shell.webContents.send('shell:menubar', m); });
-ipcMain.handle('shell:config', () => ({ widgets: listWidgets(), notch: geometry().notch, settings }));
+ipcMain.handle('shell:config', () => ({ widgets: listWidgets(), notch: geometry().notch, settings, platform: isWin ? 'win' : isMac ? 'mac' : 'linux' }));
 ipcMain.handle('shell:setSetting', (_e, key, value) => { settings[key] = value; saveSettings(); return settings; });
 
 // ---------- lifecycle ----------
 app.whenReady().then(async () => {
-  if (process.platform === 'darwin') app.dock.hide();
+  if (isMac) app.dock.hide();
   loadSettings();
   detectNotch();
   const widgets = listWidgets();
@@ -367,7 +372,7 @@ app.whenReady().then(async () => {
   await setupWidgetMains(widgets);
   buildTray(widgets);
   startUpdateSchedule();
-  if (settings.menuAvoid !== false) {
+  if (isMac && settings.menuAvoid !== false) {
     const first = !settings.menuAvoidAsked;           // show the macOS permission dialog once
     if (first) { settings.menuAvoidAsked = true; saveSettings(); }
     startMenuWatch(first);

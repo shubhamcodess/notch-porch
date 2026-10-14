@@ -6,7 +6,8 @@ const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
 
 const REPO = 'shubhamcodess/notch-porch';
-const ASSET = 'Notch-Porch-arm64.zip';
+const { isWin } = require('./platform');
+const ASSET = isWin ? 'Notch-Porch-Setup-x64.exe' : 'Notch-Porch-arm64.zip';
 const APP_ID = 'com.shubhamcodess.notchporch';
 const UA = 'NotchPorch-Updater (+https://github.com/shubhamcodess/notch-porch)';
 
@@ -56,6 +57,10 @@ const run = (cmd, args) => new Promise((resolve, reject) => execFile(cmd, args, 
 
 // unpack and check that this really is the app we expect, at the version we expect, with an intact seal
 async function prepare(zip, workDir, expectVersion) {
+  if (isWin) {                      // the installer was already checked against its published size + sha256 by download()
+    if (!fs.existsSync(zip) || fs.statSync(zip).size < 1e6) throw new Error('The installer did not download properly');
+    return zip;
+  }
   const out = path.join(workDir, 'extracted');
   fs.mkdirSync(out, { recursive: true });
   await run('/usr/bin/ditto', ['-x', '-k', zip, out]);
@@ -71,6 +76,12 @@ async function prepare(zip, workDir, expectVersion) {
 
 // after we quit: move the new bundle into place (keeping the old one until it worked), then open it
 function swapAndRelaunch(newApp, destApp, workDir) {
+  if (isWin) {                      // silent per-user install over the old one; --force-run reopens the app afterwards
+    const script = path.join(workDir, 'swap.cmd');
+    fs.writeFileSync(script, `@echo off\r\nping -n 3 127.0.0.1 >nul\r\n"${newApp}" /S --updated --force-run\r\n`);
+    spawn('cmd.exe', ['/c', script], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    return;
+  }
   const script = path.join(workDir, 'swap.sh');
   fs.writeFileSync(script, `#!/bin/bash
 PID="$1"; NEW="$2"; DEST="$3"; BACKUP="$DEST.previous"

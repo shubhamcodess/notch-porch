@@ -13,10 +13,11 @@
   "main": "src/main/main.js",
   "private": true,
   "scripts": {
-    "prestart": "npm run build:native --silent || true",
+    "prestart": "node scripts/build-native.js --silent || true",
     "start": "electron .",
-    "build:native": "mkdir -p build && clang -O2 -fobjc-arc -framework Cocoa -framework ApplicationServices native/menubar-watch.m -o build/menubar-watch",
-    "dist": "npm run build:native && electron-builder --mac --arm64 --publish never"
+    "build:native": "node scripts/build-native.js",
+    "dist": "npm run build:native && electron-builder --mac --arm64 --publish never",
+    "dist:win": "electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.0.0",
@@ -63,17 +64,35 @@
       "gatekeeperAssess": false,
       "extendInfo": {
         "LSUIElement": true
-      }
+      },
+      "extraResources": [
+        {
+          "from": "build/menubar-watch",
+          "to": "menubar-watch"
+        }
+      ]
     },
     "dmg": {
       "title": "Notch Porch"
     },
     "afterPack": "scripts/adhoc-sign.js",
-    "extraResources": [
-      {
-        "from": "build/menubar-watch",
-        "to": "menubar-watch"
-      }
-    ]
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Notch-Porch-Setup-${arch}.${ext}",
+      "shortcutName": "Notch Porch"
+    }
   }
 }
