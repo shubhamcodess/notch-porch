@@ -8,6 +8,14 @@ Notch Porch isn't signed with a paid Apple Developer certificate. Open **System 
 xattr -cr "/Applications/Notch Porch.app"
 ```
 
+## The update didn't install
+
+Your current version is left untouched. Download the DMG from the [releases page](https://github.com/shubhamcodess/notch-porch/releases/latest) and drag it into Applications. If the app lives somewhere that needs an administrator (for example, installed for all users), it can't replace itself, so it opens the release page instead.
+
+## Accessibility stopped working after an update
+
+macOS ties the permission to the app's signature, and Notch Porch isn't signed with a paid developer certificate, so a new version can look like a new app. Allow it again in **System Settings → Privacy & Security → Accessibility**.
+
 ## The pill doesn't line up with my notch
 
 The size is detected automatically. If you built from source without the Xcode command line tools, the fallback width is used; install them (`xcode-select --install`) and run `npm run build:native`, or set `notchWidth` in [settings.json](CONFIGURATION.md).

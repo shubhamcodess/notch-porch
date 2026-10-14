@@ -90,6 +90,10 @@ Lyrics come from LRCLIB, searched fuzzily from several query variants. An entry 
 
 The tray menu shows a leaf: green when the app uses a normal amount of CPU and memory, yellow with a short explanation when it doesn't (high CPU, a lot of memory, or moderate CPU while on battery).
 
+## Updates
+
+`src/main/updater.js` reads the latest GitHub release, compares its tag with the running version, and (on request) downloads `Notch-Porch-arm64.zip`. It checks the size and the published SHA-256, unpacks it, and refuses anything that isn't an intact Notch Porch bundle at the expected version. The app then quits and a tiny detached script swaps the bundle in place (keeping the old one until the move worked, and rolling back if it didn't) and reopens it. Dev runs and folders the app can't write to open the release page instead.
+
 ## Packaging and releases
 
 `npm run dist` builds an Apple Silicon DMG and zip with electron-builder. The app is signed ad hoc (no certificate) by `scripts/adhoc-sign.js`, which Apple Silicon needs in order to launch it. Pushing a `v*` tag runs the release workflow, which builds on a macOS runner and attaches the files to a GitHub release under fixed names, so the "latest" download URLs and the install script keep working.

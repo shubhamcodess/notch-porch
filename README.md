@@ -96,6 +96,10 @@ cd notch-porch && npm install && npm start
 
 Needs Node 20+ and Xcode's command line tools. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Updating
+
+Notch Porch checks for a new release about once a day. When one is out, a small dot appears next to the menu-bar icon, macOS shows one notification banner, and **Update to vX.Y.Z** shows up at the top of its menu. Tap it: it downloads the release, verifies it, replaces the app and reopens itself. You can also check any time from **menu-bar icon → Settings → Check for updates**. Turn off **Notify me of new versions** if you don't want the daily check. It never installs anything without your tap.
+
 <br>
 
 ## Your first minute
@@ -149,6 +153,12 @@ The full source is in this repository and the releases are built by GitHub Actio
 <summary><b>Google won't let me sign in.</b></summary>
 <br>
 It sometimes blocks sign-in inside embedded browsers. See <a href="docs/TROUBLESHOOTING.md#google-refuses-the-sign-in">Troubleshooting</a> for the cookie-import fallback.
+</details>
+
+<details>
+<summary><b>Do I have to re-allow Accessibility after an update?</b></summary>
+<br>
+Possibly. macOS ties that permission to the app's signature, and Notch Porch isn't signed with a paid developer certificate, so a new version can look like a new app. If the items stop stepping aside for menus, allow it again under <b>System Settings → Privacy & Security → Accessibility</b>.
 </details>
 
 <details>
